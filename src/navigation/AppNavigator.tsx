@@ -6,6 +6,7 @@ import { ActivityIndicator } from 'react-native';
 import { colors, spacing, radius, typography, shadows } from '../theme';
 import {
   LoginScreen,
+  DashboardScreen,
   ConversationsScreen,
   ChatScreen,
   SettingsScreen,
@@ -19,7 +20,9 @@ import {
   AgentDetailScreen,
   NewAgentScreen,
   UsersScreen,
+  UserEditScreen,
   TasksScreen,
+  TaskDetailScreen,
   NewTaskScreen,
   TagsScreen,
   NewTagScreen,
@@ -40,6 +43,8 @@ export type RootStackParamList = {
   NewContact: undefined;
   AgentDetail: { agentId: string };
   NewAgent: undefined;
+  UserEdit: { userId: string };
+  TaskDetail: { taskId: string };
   NewTask: undefined;
   NewTag: undefined;
   KnowledgeDetail: { baseId: string; name: string };
@@ -106,6 +111,14 @@ function DrawerNavigator() {
         drawerActiveBackgroundColor: colors.primarySoft,
       }}
     >
+      <Drawer.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{
+          title: 'Dashboard',
+          drawerIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📊</Text>,
+        }}
+      />
       <Drawer.Screen
         name="Inbox"
         component={ConversationsScreen}
@@ -265,6 +278,16 @@ export function AppNavigator() {
             name="NewAgent"
             component={NewAgentScreen}
             options={{ title: 'Novo Agente' }}
+          />
+          <Stack.Screen
+            name="UserEdit"
+            component={UserEditScreen}
+            options={{ title: 'Editar Usuário' }}
+          />
+          <Stack.Screen
+            name="TaskDetail"
+            component={TaskDetailScreen}
+            options={{ title: 'Editar Tarefa' }}
           />
           <Stack.Screen
             name="NewTask"

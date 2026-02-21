@@ -1,4 +1,5 @@
 export { LoginScreen } from './LoginScreen';
+export { DashboardScreen } from './DashboardScreen';
 export { ConversationsScreen } from './ConversationsScreen';
 export { ChatScreen } from './ChatScreen';
 export { SettingsScreen } from './SettingsScreen';
@@ -12,7 +13,9 @@ export { AgentsScreen } from './AgentsScreen';
 export { AgentDetailScreen } from './AgentDetailScreen';
 export { NewAgentScreen } from './NewAgentScreen';
 export { UsersScreen } from './UsersScreen';
+export { UserEditScreen } from './UserEditScreen';
 export { TasksScreen } from './TasksScreen';
+export { TaskDetailScreen } from './TaskDetailScreen';
 export { NewTaskScreen } from './NewTaskScreen';
 export { TagsScreen } from './TagsScreen';
 export { NewTagScreen } from './NewTagScreen';

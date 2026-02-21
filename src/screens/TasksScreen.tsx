@@ -92,7 +92,7 @@ export function TasksScreen() {
     return (
       <TouchableOpacity 
         style={styles.card} 
-        onPress={() => toggleComplete(item)}
+        onPress={() => navigation.navigate('TaskDetail', { taskId: item.id_user_task })}
         activeOpacity={0.7}
       >
         <TouchableOpacity 

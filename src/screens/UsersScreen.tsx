@@ -117,14 +117,7 @@ export function UsersScreen() {
   };
 
   const openEditUser = (user: AppUser) => {
-    setSelectedUser(user);
-    setFormData({
-      full_name: user.full_name,
-      email: user.email,
-      password: '',
-      role: user.role,
-    });
-    setShowEditUser(true);
+    navigation.navigate('UserEdit', { userId: user.id_app_user });
   };
 
   const roles = [

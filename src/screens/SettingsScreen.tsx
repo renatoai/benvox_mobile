@@ -6,16 +6,14 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
-  Switch,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { settingsService } from '../services';
 import type { TenantSettings } from '../types';
+import { colors, spacing, radius, typography, shadows } from '../theme';
 
 export function SettingsScreen() {
-  const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const [settings, setSettings] = useState<TenantSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +54,7 @@ export function SettingsScreen() {
       ],
     },
     {
-      title: 'Configurações do Chat',
+      title: 'Chat',
       items: [
         { icon: '💬', label: 'Exibição de Remetente', value: settings?.show_sender_name_attendant || 'name' },
         { icon: '🤖', label: 'Título do Agente', value: settings?.default_agent_title || 'Agente' },
@@ -83,54 +81,75 @@ export function SettingsScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#25D366" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.profileSection}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Profile Card */}
+      <View style={styles.profileCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
             {user?.full_name?.charAt(0)?.toUpperCase() || '?'}
           </Text>
         </View>
-        <Text style={styles.userName}>{user?.full_name || 'Usuário'}</Text>
-        <Text style={styles.userEmail}>{user?.email}</Text>
-        <Text style={styles.userRole}>{user?.role || 'Usuário'}</Text>
+        <View style={styles.profileInfo}>
+          <Text style={styles.userName}>{user?.full_name || 'Usuário'}</Text>
+          <Text style={styles.userEmail}>{user?.email}</Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>{user?.role || 'Usuário'}</Text>
+          </View>
+        </View>
       </View>
 
+      {/* Menu Sections */}
       {menuItems.map((section, sectionIndex) => (
         <View key={sectionIndex} style={styles.section}>
           <Text style={styles.sectionTitle}>{section.title}</Text>
-          {section.items.map((item, itemIndex) => (
-            <TouchableOpacity
-              key={itemIndex}
-              style={styles.menuItem}
-              onPress={item.onPress}
-              disabled={!item.onPress}
-            >
-              <Text style={styles.menuItemIcon}>{item.icon}</Text>
-              <Text style={styles.menuItemText}>{item.label}</Text>
-              {item.value ? (
-                <Text style={styles.menuItemValue}>{item.value}</Text>
-              ) : (
-                <Text style={styles.menuItemArrow}>›</Text>
-              )}
-            </TouchableOpacity>
-          ))}
+          <View style={styles.sectionContent}>
+            {section.items.map((item, itemIndex) => (
+              <TouchableOpacity
+                key={itemIndex}
+                style={[
+                  styles.menuItem,
+                  itemIndex === section.items.length - 1 && styles.menuItemLast
+                ]}
+                onPress={item.onPress}
+                disabled={!item.onPress}
+                activeOpacity={item.onPress ? 0.7 : 1}
+              >
+                <View style={styles.menuItemIcon}>
+                  <Text style={styles.menuItemIconText}>{item.icon}</Text>
+                </View>
+                <Text style={styles.menuItemText}>{item.label}</Text>
+                {item.value ? (
+                  <Text style={styles.menuItemValue}>{item.value}</Text>
+                ) : (
+                  <Text style={styles.menuItemArrow}>›</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       ))}
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      {/* Logout Button */}
+      <TouchableOpacity 
+        style={styles.logoutButton} 
+        onPress={handleLogout}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.logoutIcon}>🚪</Text>
         <Text style={styles.logoutButtonText}>Sair da Conta</Text>
       </TouchableOpacity>
 
-      <Text style={styles.footer}>
-        Benvox Mobile v1.0.0{'\n'}
-        © 2026 Benvox
-      </Text>
+      {/* Footer */}
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Benvox Mobile v1.0.0</Text>
+        <Text style={styles.footerCopyright}>© 2026 Benvox</Text>
+      </View>
     </ScrollView>
   );
 }
@@ -138,106 +157,154 @@ export function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background,
   },
-  profileSection: {
-    backgroundColor: '#075E54',
+  
+  // Profile Card
+  profileCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingTop: 16,
+    backgroundColor: colors.surface,
+    margin: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    ...shadows.sm,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#25D366',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
   avatarText: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '600',
+    color: colors.textInverse,
+    fontSize: 26,
+    fontWeight: '700',
+  },
+  profileInfo: {
+    flex: 1,
+    marginLeft: spacing.lg,
   },
   userName: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 4,
+    ...typography.h3,
+    color: colors.textPrimary,
   },
   userEmail: {
-    fontSize: 14,
-    color: '#DCF8C6',
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
-  userRole: {
-    fontSize: 12,
-    color: '#DCF8C6',
-    marginTop: 4,
+  roleBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.xs,
+    marginTop: spacing.sm,
+  },
+  roleText: {
+    ...typography.labelSmall,
+    color: colors.primaryDark,
     textTransform: 'capitalize',
   },
+  
+  // Sections
   section: {
-    backgroundColor: '#fff',
-    marginTop: 16,
+    marginTop: spacing.md,
+    marginHorizontal: spacing.md,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#075E54',
+    ...typography.label,
+    color: colors.textTertiary,
     textTransform: 'uppercase',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#f9f9f9',
+    letterSpacing: 0.5,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.sm,
+  },
+  sectionContent: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    ...shadows.xs,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.borderLight,
+  },
+  menuItemLast: {
+    borderBottomWidth: 0,
   },
   menuItemIcon: {
-    fontSize: 20,
-    marginRight: 12,
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceHover,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  menuItemIconText: {
+    fontSize: 18,
   },
   menuItemText: {
+    ...typography.body,
+    color: colors.textPrimary,
     flex: 1,
-    fontSize: 16,
-    color: '#333',
   },
   menuItemArrow: {
     fontSize: 20,
-    color: '#999',
+    color: colors.textTertiary,
   },
   menuItemValue: {
-    fontSize: 14,
-    color: '#666',
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
+  
+  // Logout
   logoutButton: {
-    backgroundColor: '#fff',
-    marginTop: 24,
-    marginHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    marginTop: spacing.xl,
+    marginHorizontal: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.error + '30',
+  },
+  logoutIcon: {
+    fontSize: 20,
+    marginRight: spacing.sm,
   },
   logoutButtonText: {
-    color: '#e74c3c',
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.button,
+    color: colors.error,
   },
+  
+  // Footer
   footer: {
-    textAlign: 'center',
-    color: '#999',
-    fontSize: 12,
-    marginTop: 24,
-    marginBottom: 32,
-    lineHeight: 20,
+    alignItems: 'center',
+    marginTop: spacing.xxl,
+    marginBottom: spacing.xxxl,
+  },
+  footerText: {
+    ...typography.caption,
+    color: colors.textTertiary,
+  },
+  footerCopyright: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: spacing.xs,
   },
 });

@@ -438,7 +438,7 @@ export function ConversationsScreen() {
             <Text style={styles.emptySubtitle}>Configure seus canais de comunicação</Text>
           </View>
         }
-        contentContainerStyle={sections.length === 0 ? { flex: 1 } : { paddingBottom: spacing.xxxl }}
+        contentContainerStyle={sections.length === 0 ? { flex: 1 } : { paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -448,7 +448,7 @@ export function ConversationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f9fafb', // neutral-50
   },
   
   // Loading
@@ -456,12 +456,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: '#f9fafb',
     gap: spacing.md,
   },
   loadingText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    fontSize: 15,
+    color: '#6b7280',
   },
   loadingContainer: {
     padding: spacing.xl,
@@ -470,153 +470,162 @@ const styles = StyleSheet.create({
   
   // Header & Filters
   header: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#e5e7eb',
   },
   filterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceHover,
+    backgroundColor: '#f3f4f6',
     borderRadius: radius.lg,
-    padding: spacing.xs,
+    padding: 4,
   },
   sseIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginHorizontal: spacing.sm,
+    marginHorizontal: 8,
   },
-  sseOn: { backgroundColor: colors.success },
-  sseOff: { backgroundColor: colors.warning },
+  sseOn: { backgroundColor: '#25d366' },
+  sseOff: { backgroundColor: '#f59e0b' },
   filterPill: {
     flex: 1,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: radius.md,
     alignItems: 'center',
   },
   filterPillActive: {
-    backgroundColor: colors.surface,
+    backgroundColor: '#ffffff',
     ...shadows.xs,
   },
   filterText: {
-    ...typography.label,
-    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6b7280',
   },
   filterTextActive: {
-    color: colors.primary,
+    color: '#36abd5', // primary
   },
   
   // Channel Section
   channelSection: {
-    marginTop: spacing.sm,
+    marginTop: 0,
   },
   channelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#f9fafb',
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: '#e5e7eb',
   },
   channelIconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceHover,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   channelIconActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: '#25d366',
   },
   channelIconText: {
-    fontSize: 18,
+    fontSize: 14,
   },
   channelInfo: {
     flex: 1,
-    marginLeft: spacing.md,
+    marginLeft: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   channelName: {
-    ...typography.body,
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: '#374151',
   },
   channelCount: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    marginTop: 2,
+    fontSize: 11,
+    color: '#9ca3af',
   },
   channelUnreadBadge: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#fed7aa', // orange-100
     borderRadius: radius.full,
-    minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    marginRight: spacing.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginRight: 8,
   },
   channelUnreadText: {
-    ...typography.labelSmall,
-    color: colors.textInverse,
-    fontWeight: '700',
+    fontSize: 10,
+    color: '#c2410c', // orange-700
+    fontWeight: '500',
   },
   chevron: {
-    fontSize: 16,
-    color: colors.textTertiary,
+    fontSize: 14,
+    color: '#9ca3af',
   },
   
   // Conversations List
   conversationsList: {
-    backgroundColor: colors.surface,
+    backgroundColor: '#ffffff',
   },
   conversationCard: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    alignItems: 'center',
+    marginHorizontal: 8,
+    marginVertical: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  conversationCardSelected: {
+    backgroundColor: 'rgba(229, 231, 235, 0.5)',
   },
   
-  // Avatar
+  // Avatar - matching desktop (50x50)
   avatarWrapper: {
     position: 'relative',
+    width: 50,
+    height: 50,
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
   avatarPlaceholder: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#3b82f6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    ...typography.h3,
-    color: colors.textInverse,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   onlineIndicator: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: colors.primary,
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#25d366', // WhatsApp green when has unread
     borderWidth: 2,
-    borderColor: colors.surface,
+    borderColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   
   // Conversation Content
   conversationContent: {
     flex: 1,
-    marginLeft: spacing.md,
+    marginLeft: 12,
     justifyContent: 'center',
   },
   topRow: {
@@ -625,121 +634,124 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   contactName: {
-    ...typography.body,
-    fontWeight: '500',
-    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#1f2937', // neutral-800
     flex: 1,
-    marginRight: spacing.sm,
+    marginRight: 8,
   },
   contactNameUnread: {
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#111827', // neutral-900
   },
   timeText: {
-    ...typography.caption,
-    color: colors.textTertiary,
+    fontSize: 12,
+    color: '#6b7280', // neutral-500
   },
   timeTextUnread: {
-    color: colors.primary,
+    color: '#25d366', // WhatsApp green
     fontWeight: '600',
   },
   middleRow: {
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
   messagePreview: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   statusIcon: {
-    fontSize: 14,
-    marginRight: spacing.xs,
-    fontWeight: '700',
+    fontSize: 13,
+    marginRight: 4,
+    fontWeight: '600',
   },
   messageText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: '#6b7280', // neutral-500
     flex: 1,
   },
   messageTextUnread: {
-    color: colors.textPrimary,
+    color: '#374151', // neutral-700
     fontWeight: '500',
   },
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.sm,
+    marginTop: 6,
   },
   badgesLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
     flex: 1,
   },
   
   // Badges
   badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
     flexDirection: 'row',
     alignItems: 'center',
   },
   badgeAgent: {
-    backgroundColor: colors.agentBg,
+    backgroundColor: '#ede9fe', // violet-100
   },
   badgeHuman: {
-    backgroundColor: colors.humanBg,
+    backgroundColor: '#e0f2fe', // sky-100
   },
   badgeText: {
-    ...typography.labelSmall,
+    fontSize: 11,
+    fontWeight: '500',
   },
   badgeTextAgent: {
-    color: colors.agentText,
+    color: '#7c3aed', // violet-600
   },
   badgeTextHuman: {
-    color: colors.humanText,
+    color: '#0284c7', // sky-600
   },
   tagBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.xs,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   tagDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: spacing.xs,
+    marginRight: 4,
   },
   tagText: {
-    ...typography.labelSmall,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
   },
   unreadBadge: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.full,
-    minWidth: 22,
-    height: 22,
+    backgroundColor: '#25d366', // WhatsApp green
+    borderRadius: 12,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: 6,
   },
   unreadText: {
-    ...typography.labelSmall,
-    color: colors.textInverse,
+    fontSize: 11,
+    color: '#ffffff',
     fontWeight: '700',
   },
   
   // Load More
   loadMoreButton: {
-    paddingVertical: spacing.lg,
+    paddingVertical: 16,
     alignItems: 'center',
-    backgroundColor: colors.surfaceHover,
+    backgroundColor: '#f9fafb',
   },
   loadMoreText: {
-    ...typography.label,
-    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#36abd5',
   },
   
   // Empty States
@@ -747,28 +759,29 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.xxl,
+    paddingHorizontal: 32,
   },
   emptyIcon: {
     fontSize: 64,
-    marginBottom: spacing.lg,
+    marginBottom: 16,
   },
   emptyTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
   },
   emptySubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
+    fontSize: 15,
+    color: '#6b7280',
     textAlign: 'center',
   },
   emptyChannel: {
-    padding: spacing.xl,
+    padding: 24,
     alignItems: 'center',
   },
   emptyChannelText: {
-    ...typography.body,
-    color: colors.textTertiary,
+    fontSize: 14,
+    color: '#9ca3af',
   },
 });

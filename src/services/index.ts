@@ -1,0 +1,12 @@
+export { authService } from './auth.service';
+export { conversationsService } from './conversations.service';
+export { channelsService } from './channels.service';
+export { contactsService } from './contacts.service';
+export { funnelsService } from './funnels.service';
+export { agentsService } from './agents.service';
+export { tagsService } from './tags.service';
+export { tasksService } from './tasks.service';
+export { usersService } from './users.service';
+export { knowledgeService } from './knowledge.service';
+export { settingsService } from './settings.service';
+export { default as api } from './api';

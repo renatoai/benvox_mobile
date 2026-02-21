@@ -57,7 +57,8 @@ function CustomDrawerContent(props: any) {
   const { user, logout } = useAuth();
   
   return (
-    <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerContainer}>
+    <View style={styles.drawerContainer}>
+      {/* Header */}
       <View style={styles.drawerHeader}>
         <View style={styles.userAvatar}>
           <Text style={styles.userAvatarText}>
@@ -68,15 +69,17 @@ function CustomDrawerContent(props: any) {
         <Text style={styles.userEmail}>{user?.email}</Text>
       </View>
       
-      <View style={styles.drawerContent}>
+      {/* Scrollable menu items */}
+      <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerScrollContent}>
         <DrawerItemList {...props} />
-      </View>
+      </DrawerContentScrollView>
       
+      {/* Fixed logout button at bottom */}
       <TouchableOpacity style={styles.logoutButton} onPress={logout}>
         <Text style={styles.logoutIcon}>🚪</Text>
         <Text style={styles.logoutText}>Sair</Text>
       </TouchableOpacity>
-    </DrawerContentScrollView>
+    </View>
   );
 }
 
@@ -283,11 +286,15 @@ const styles = StyleSheet.create({
   },
   drawerContainer: {
     flex: 1,
+    backgroundColor: '#fff',
+  },
+  drawerScrollContent: {
+    paddingTop: 0,
   },
   drawerHeader: {
     backgroundColor: '#075E54',
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 50,
   },
   userAvatar: {
     width: 60,
@@ -313,16 +320,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  drawerContent: {
-    flex: 1,
-    paddingTop: 10,
-  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
+    paddingBottom: 32,
     borderTopWidth: 1,
     borderTopColor: '#eee',
+    backgroundColor: '#fff',
   },
   logoutIcon: {
     fontSize: 20,

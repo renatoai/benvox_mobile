@@ -31,10 +31,22 @@ export const tagsService = {
     await api.delete(`/tags/${id}`);
   },
 
+  // Assign tag to conversation
+  async assignToConversation(tagId: string, conversationId: string): Promise<void> {
+    await api.post(`/tags/${tagId}/assign/conversation/${conversationId}`);
+  },
+
+  // Remove tag from conversation
+  async removeFromConversation(tagId: string, conversationId: string): Promise<void> {
+    await api.delete(`/tags/${tagId}/assign/conversation/${conversationId}`);
+  },
+
+  // Generic entity assignment
   async assignToEntity(tagId: string, entityType: string, entityId: string): Promise<void> {
     await api.post(`/tags/${tagId}/assign/${entityType}/${entityId}`);
   },
 
+  // Get tags for entity
   async getEntityTags(entityType: string, entityId: string): Promise<Tag[]> {
     const response = await api.get<Tag[]>(`/tags/entity/${entityType}/${entityId}`);
     return response.data;

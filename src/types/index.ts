@@ -19,16 +19,53 @@ export interface AuthResponse {
 // Messages & Conversations
 export interface Message {
   id_message: string;
+  external_message_id?: string;
   conversation_id: string;
-  text_body: string;
-  from_me: boolean;
+  text_body?: string;
+  from_me?: boolean;
+  direction?: 'inbound' | 'outbound';
   sender_type: 'contact' | 'user' | 'agent' | 'system';
   sender_display_name?: string;
-  message_type: 'text' | 'audio' | 'image' | 'document' | 'video' | 'interactive' | 'button';
+  message_type: string;
   media_url?: string;
+  stored_media_url?: string;
   caption?: string;
   created_at: string;
   status?: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+  
+  // Quote/Reply
+  quoted_message_id?: string;
+  quoted_text?: string;
+  
+  // Document
+  file_name?: string;
+  mime_type?: string;
+  
+  // Location
+  latitude?: number;
+  longitude?: number;
+  location_name?: string;
+  location_address?: string;
+  
+  // Contact sharing
+  shared_contact_full_name?: string;
+  shared_contact_phone_number?: string;
+  shared_contact_email?: string;
+  shared_contact_organization?: string;
+  
+  // Interactive
+  interactive_type?: string;
+  interactive_header?: string;
+  interactive_body?: string;
+  interactive_footer?: string;
+  interactive_buttons?: Array<{ id: string; title: string }>;
+  button_response_id?: string;
+  
+  // Reaction
+  reaction_emoji?: string;
+  
+  // Raw payload (for templates etc)
+  raw_payload?: any;
 }
 
 export interface Conversation {
@@ -60,6 +97,9 @@ export interface Conversation {
   // Pipeline/Stage
   id_pipeline?: string;
   id_stage?: string;
+  
+  // Tags
+  tags?: string[];
   
   // Timestamps
   last_message_at?: string;

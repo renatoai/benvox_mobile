@@ -9,4 +9,5 @@ export { tasksService } from './tasks.service';
 export { usersService } from './users.service';
 export { knowledgeService } from './knowledge.service';
 export { settingsService } from './settings.service';
+export { messagesService } from './messages.service';
 export { default as api } from './api';

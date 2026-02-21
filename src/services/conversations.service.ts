@@ -36,7 +36,13 @@ export const conversationsService = {
     return [];
   },
 
-  async sendMessage(conversationId: string, text: string, toPhone?: string, channelId?: string): Promise<Message> {
+  async sendMessage(
+    conversationId: string, 
+    text: string, 
+    toPhone?: string, 
+    channelId?: string,
+    quoteMessageId?: string
+  ): Promise<Message> {
     // First, get conversation details to get phone and channel
     let phone = toPhone;
     let channel = channelId;
@@ -55,12 +61,19 @@ export const conversationsService = {
       throw new Error('Phone number is required to send message');
     }
 
-    const response = await api.post<Message>('/messages/send/text', {
+    const payload: any = {
       text,
       to_identifier: phone,
       id_channel: channel,
       id_conversation: conversationId,
-    });
+    };
+
+    // Add quote message id if replying
+    if (quoteMessageId) {
+      payload.quote_message_id = quoteMessageId;
+    }
+
+    const response = await api.post<Message>('/messages/send/text', payload);
     return response.data;
   },
 
@@ -92,8 +105,16 @@ export const conversationsService = {
     await api.post(`/conversations/${conversationId}/reopen`);
   },
 
+  async delete(conversationId: string): Promise<void> {
+    await api.delete(`/conversations/${conversationId}`);
+  },
+
   async assignToMe(conversationId: string): Promise<void> {
-    await api.post(`/conversations/${conversationId}/assign-to-me`);
+    await api.post(`/conversations/${conversationId}/assume`);
+  },
+
+  async release(conversationId: string, queueRole?: string): Promise<void> {
+    await api.post(`/conversations/${conversationId}/release`, { queue_role: queueRole });
   },
 
   async assign(conversationId: string, userId: string): Promise<void> {
@@ -104,7 +125,7 @@ export const conversationsService = {
     await api.post(`/conversations/${conversationId}/unassign`);
   },
 
-  async transfer(conversationId: string, data: { agent_id?: string; transfer_to_human?: boolean }): Promise<void> {
+  async transfer(conversationId: string, data: { agent_id?: string; transfer_to_human?: boolean; auto_respond?: boolean; skip_greeting?: boolean }): Promise<void> {
     await api.post(`/conversations/${conversationId}/transfer`, data);
   },
 

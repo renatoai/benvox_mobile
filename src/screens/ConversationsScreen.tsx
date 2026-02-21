@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
+  SectionList,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { conversationsService, tagsService } from '../services';
+import { conversationsService, tagsService, channelsService } from '../services';
 import type { Conversation, Tag } from '../types';
 
 type RootStackParamList = {
@@ -21,22 +22,62 @@ type RootStackParamList = {
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Conversations'>;
 
+interface Channel {
+  id_channel: string;
+  name: string;
+  type: string;
+  avatar_url?: string;
+}
+
+interface ChannelSection {
+  channel: Channel;
+  data: Conversation[];
+  cursor?: string;
+  hasMore: boolean;
+  isLoading: boolean;
+}
+
+const ITEMS_PER_PAGE = 20;
+
 export function ConversationsScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [sections, setSections] = useState<ChannelSection[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<'todas' | 'minhas' | 'fila'>('todas');
+  const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set());
 
+  // Load channels and initial conversations
   const loadData = useCallback(async () => {
     try {
-      const [convData, tagData] = await Promise.all([
-        conversationsService.getAll({ limit: 100 }),
+      const [channelsData, tagsData] = await Promise.all([
+        channelsService.getAll(),
         tagsService.getAll().catch(() => []),
       ]);
-      setConversations(convData);
-      setTags(tagData);
+      
+      setChannels(channelsData);
+      setTags(tagsData);
+      
+      // Initialize sections with channels
+      const initialSections: ChannelSection[] = channelsData.map((ch: Channel) => ({
+        channel: ch,
+        data: [],
+        hasMore: true,
+        isLoading: false,
+      }));
+      setSections(initialSections);
+      
+      // Load first page for each channel
+      for (const channel of channelsData) {
+        loadChannelConversations(channel.id_channel, false);
+      }
+      
+      // Expand first channel by default
+      if (channelsData.length > 0) {
+        setExpandedChannels(new Set([channelsData[0].id_channel]));
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -45,17 +86,71 @@ export function ConversationsScreen() {
     }
   }, []);
 
-  // Reload when screen comes into focus
+  const loadChannelConversations = async (channelId: string, loadMore: boolean) => {
+    setSections(prev => prev.map(s => 
+      s.channel.id_channel === channelId 
+        ? { ...s, isLoading: true }
+        : s
+    ));
+
+    try {
+      const section = sections.find(s => s.channel.id_channel === channelId);
+      const cursor = loadMore ? section?.cursor : undefined;
+      
+      const response = await conversationsService.getAll({ 
+        limit: ITEMS_PER_PAGE, 
+        cursor,
+        // @ts-ignore - backend supports these params
+        id_channel: channelId,
+      });
+      
+      setSections(prev => prev.map(s => {
+        if (s.channel.id_channel !== channelId) return s;
+        
+        const newData = loadMore 
+          ? [...s.data, ...response]
+          : response;
+        
+        return {
+          ...s,
+          data: newData,
+          hasMore: response.length === ITEMS_PER_PAGE,
+          isLoading: false,
+          // cursor: response.nextCursor, // If API returns cursor
+        };
+      }));
+    } catch (error) {
+      console.error('Error loading channel conversations:', error);
+      setSections(prev => prev.map(s => 
+        s.channel.id_channel === channelId 
+          ? { ...s, isLoading: false }
+          : s
+      ));
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [loadData])
+    }, [])
   );
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
     loadData();
   }, [loadData]);
+
+  const toggleChannel = (channelId: string) => {
+    setExpandedChannels(prev => {
+      const next = new Set(prev);
+      if (next.has(channelId)) {
+        next.delete(channelId);
+      } else {
+        next.add(channelId);
+      }
+      return next;
+    });
+  };
 
   const formatTime = (dateString?: string) => {
     if (!dateString) return '';
@@ -78,7 +173,6 @@ export function ConversationsScreen() {
     return tags.find(t => t.id_tag === tagId);
   };
 
-  // Message status icon component
   const MessageStatus = ({ status, direction }: { status?: string; direction?: string }) => {
     if (direction !== 'outbound') return null;
     
@@ -101,11 +195,19 @@ export function ConversationsScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: Conversation }) => {
+  const getChannelIcon = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'whatsapp': return '📱';
+      case 'telegram': return '✈️';
+      case 'instagram': return '📷';
+      case 'messenger': return '💬';
+      default: return '📨';
+    }
+  };
+
+  const renderConversation = (item: Conversation) => {
     const hasUnread = (item.unread_count || 0) > 0;
     const convTags = (item.tags || []).map(getTagById).filter(Boolean) as Tag[];
-    
-    // Get assignee info
     const assigneeName = item.assigned_to_name || 
       (item.assigned_to_agent_name ? `🤖 ${item.assigned_to_agent_name}` : null);
     const isAgent = !!item.assigned_to_agent_name || !!item.assigned_to_agent_id;
@@ -130,27 +232,12 @@ export function ConversationsScreen() {
               </Text>
             </View>
           )}
-          {/* Channel badge */}
-          <View style={[
-            styles.channelBadge,
-            hasUnread ? styles.channelBadgeActive : styles.channelBadgeInactive
-          ]}>
-            <Text style={styles.channelIcon}>
-              {item.channel_type === 'whatsapp' ? '📱' : 
-               item.channel_type === 'telegram' ? '✈️' :
-               item.channel_type === 'instagram' ? '📷' : '💬'}
-            </Text>
-          </View>
         </View>
 
         {/* Content */}
         <View style={styles.content}>
-          {/* Row 1: Name + Time */}
           <View style={styles.row1}>
-            <Text 
-              style={[styles.name, hasUnread && styles.nameUnread]} 
-              numberOfLines={1}
-            >
+            <Text style={[styles.name, hasUnread && styles.nameUnread]} numberOfLines={1}>
               {item.contact_name || item.contact_phone || 'Sem nome'}
             </Text>
             <Text style={[styles.time, hasUnread && styles.timeUnread]}>
@@ -158,17 +245,13 @@ export function ConversationsScreen() {
             </Text>
           </View>
 
-          {/* Row 2: Message preview + Status + Unread */}
           <View style={styles.row2}>
             <View style={styles.messageRow}>
               <MessageStatus 
                 status={(item as any).last_message_status} 
                 direction={(item as any).last_message_direction} 
               />
-              <Text 
-                style={[styles.message, hasUnread && styles.messageUnread]} 
-                numberOfLines={1}
-              >
+              <Text style={[styles.message, hasUnread && styles.messageUnread]} numberOfLines={1}>
                 {(item as any).last_message_text || 'Nenhuma mensagem'}
               </Text>
             </View>
@@ -190,14 +273,10 @@ export function ConversationsScreen() {
             </View>
           </View>
 
-          {/* Row 3: Tags */}
           {convTags.length > 0 && (
             <View style={styles.tagsRow}>
               {convTags.slice(0, 3).map(tag => (
-                <View 
-                  key={tag.id_tag} 
-                  style={[styles.tag, { backgroundColor: tag.color + '20' }]}
-                >
+                <View key={tag.id_tag} style={[styles.tag, { backgroundColor: tag.color + '20' }]}>
                   <View style={[styles.tagDot, { backgroundColor: tag.color }]} />
                   <Text style={[styles.tagText, { color: tag.color }]}>{tag.name}</Text>
                 </View>
@@ -209,6 +288,74 @@ export function ConversationsScreen() {
           )}
         </View>
       </TouchableOpacity>
+    );
+  };
+
+  const renderChannelSection = (section: ChannelSection) => {
+    const isExpanded = expandedChannels.has(section.channel.id_channel);
+    const unreadCount = section.data.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+    
+    return (
+      <View key={section.channel.id_channel}>
+        {/* Channel Header */}
+        <TouchableOpacity 
+          style={styles.channelHeader}
+          onPress={() => toggleChannel(section.channel.id_channel)}
+        >
+          <View style={[
+            styles.channelIcon,
+            unreadCount > 0 && styles.channelIconActive
+          ]}>
+            <Text style={styles.channelIconText}>
+              {getChannelIcon(section.channel.type)}
+            </Text>
+          </View>
+          <Text style={styles.channelName}>{section.channel.name}</Text>
+          <Text style={styles.channelCount}>({section.data.length})</Text>
+          {unreadCount > 0 && (
+            <View style={styles.channelUnread}>
+              <Text style={styles.channelUnreadText}>{unreadCount}</Text>
+            </View>
+          )}
+          <Text style={styles.channelChevron}>{isExpanded ? '▼' : '▶'}</Text>
+        </TouchableOpacity>
+
+        {/* Conversations */}
+        {isExpanded && (
+          <View>
+            {section.data.map(conv => renderConversation(conv))}
+            
+            {/* Load more button */}
+            {section.hasMore && section.data.length > 0 && (
+              <TouchableOpacity
+                style={styles.loadMoreBtn}
+                onPress={() => loadChannelConversations(section.channel.id_channel, true)}
+                disabled={section.isLoading}
+              >
+                {section.isLoading ? (
+                  <ActivityIndicator size="small" color="#25D366" />
+                ) : (
+                  <Text style={styles.loadMoreText}>Carregar mais...</Text>
+                )}
+              </TouchableOpacity>
+            )}
+            
+            {/* Empty state */}
+            {section.data.length === 0 && !section.isLoading && (
+              <View style={styles.emptyChannel}>
+                <Text style={styles.emptyChannelText}>Nenhuma conversa</Text>
+              </View>
+            )}
+            
+            {/* Loading state */}
+            {section.isLoading && section.data.length === 0 && (
+              <View style={styles.loadingChannel}>
+                <ActivityIndicator size="small" color="#25D366" />
+              </View>
+            )}
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -238,9 +385,9 @@ export function ConversationsScreen() {
       </View>
 
       <FlatList
-        data={conversations}
-        keyExtractor={(item) => item.id_conversation}
-        renderItem={renderItem}
+        data={sections}
+        keyExtractor={(item) => item.channel.id_channel}
+        renderItem={({ item }) => renderChannelSection(item)}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -252,11 +399,11 @@ export function ConversationsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>💬</Text>
-            <Text style={styles.emptyText}>Nenhuma conversa</Text>
-            <Text style={styles.emptySubtext}>Suas conversas aparecerão aqui</Text>
+            <Text style={styles.emptyText}>Nenhum canal</Text>
+            <Text style={styles.emptySubtext}>Configure seus canais de comunicação</Text>
           </View>
         }
-        contentContainerStyle={conversations.length === 0 ? { flex: 1 } : undefined}
+        contentContainerStyle={sections.length === 0 ? { flex: 1 } : { paddingBottom: 20 }}
       />
     </View>
   );
@@ -289,189 +436,82 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#666',
-  },
-  filterTabTextActive: {
-    color: '#25D366',
-    fontWeight: '600',
-  },
+  filterTabText: { fontSize: 13, fontWeight: '500', color: '#666' },
+  filterTabTextActive: { color: '#25D366', fontWeight: '600' },
   
-  // List item
+  // Channel header
+  channelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#f8f8f8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  channelIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  channelIconActive: {
+    backgroundColor: '#25D366',
+  },
+  channelIconText: { fontSize: 14 },
+  channelName: { fontSize: 14, fontWeight: '600', color: '#333' },
+  channelCount: { fontSize: 12, color: '#999', marginLeft: 4 },
+  channelUnread: {
+    backgroundColor: '#25D366',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+    paddingHorizontal: 6,
+  },
+  channelUnreadText: { fontSize: 11, color: '#fff', fontWeight: '700' },
+  channelChevron: { fontSize: 10, color: '#999', marginLeft: 'auto' },
+  
+  // Conversation item
   item: {
     flexDirection: 'row',
     padding: 12,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
   },
-  
-  // Avatar
-  avatarContainer: {
-    position: 'relative',
-    marginRight: 12,
-  },
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-  },
-  avatarPlaceholder: {
-    backgroundColor: '#25D366',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '600',
-  },
-  channelBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  channelBadgeActive: {
-    backgroundColor: '#25D366',
-  },
-  channelBadgeInactive: {
-    backgroundColor: '#e0e0e0',
-  },
-  channelIcon: {
-    fontSize: 10,
-  },
-  
-  // Content
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  
-  // Row 1: Name + Time
-  row1: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  name: {
-    fontSize: 16,
-    color: '#333',
-    flex: 1,
-    marginRight: 8,
-  },
-  nameUnread: {
-    fontWeight: '700',
-    color: '#000',
-  },
-  time: {
-    fontSize: 12,
-    color: '#999',
-  },
-  timeUnread: {
-    color: '#25D366',
-    fontWeight: '600',
-  },
-  
-  // Row 2: Message + Badges
-  row2: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  messageRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-  },
-  message: {
-    fontSize: 14,
-    color: '#666',
-    flex: 1,
-  },
-  messageUnread: {
-    color: '#333',
-    fontWeight: '500',
-  },
-  badges: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  assigneeBadge: {
-    backgroundColor: '#e3f2fd',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  assigneeBadgeAgent: {
-    backgroundColor: '#f3e5f5',
-  },
-  assigneeText: {
-    fontSize: 11,
-    color: '#1976d2',
-    fontWeight: '500',
-  },
-  assigneeTextAgent: {
-    color: '#7b1fa2',
-  },
-  unreadBadge: {
-    backgroundColor: '#25D366',
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  unreadText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  
-  // Row 3: Tags
-  tagsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    marginTop: 4,
-    gap: 4,
-  },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  tagDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 4,
-  },
-  tagText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  moreTags: {
-    fontSize: 10,
-    color: '#999',
-  },
+  avatarContainer: { marginRight: 12 },
+  avatar: { width: 50, height: 50, borderRadius: 25 },
+  avatarPlaceholder: { backgroundColor: '#25D366', justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: '#fff', fontSize: 20, fontWeight: '600' },
+  content: { flex: 1, justifyContent: 'center' },
+  row1: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  name: { fontSize: 16, color: '#333', flex: 1, marginRight: 8 },
+  nameUnread: { fontWeight: '700', color: '#000' },
+  time: { fontSize: 12, color: '#999' },
+  timeUnread: { color: '#25D366', fontWeight: '600' },
+  row2: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  messageRow: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 },
+  message: { fontSize: 14, color: '#666', flex: 1 },
+  messageUnread: { color: '#333', fontWeight: '500' },
+  badges: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  assigneeBadge: { backgroundColor: '#e3f2fd', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  assigneeBadgeAgent: { backgroundColor: '#f3e5f5' },
+  assigneeText: { fontSize: 11, color: '#1976d2', fontWeight: '500' },
+  assigneeTextAgent: { color: '#7b1fa2' },
+  unreadBadge: { backgroundColor: '#25D366', minWidth: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+  unreadText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  tagsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 4, gap: 4 },
+  tag: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  tagDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
+  tagText: { fontSize: 10, fontWeight: '600' },
+  moreTags: { fontSize: 10, color: '#999' },
   
   // Message status
   statusRead: { fontSize: 14, color: '#53bdeb', marginRight: 4, fontWeight: '700' },
@@ -480,9 +520,16 @@ const styles = StyleSheet.create({
   statusPending: { fontSize: 12, color: '#999', marginRight: 4 },
   statusFailed: { fontSize: 12, marginRight: 4 },
   
-  // Empty state
+  // Load more
+  loadMoreBtn: { paddingVertical: 14, alignItems: 'center', backgroundColor: '#f9f9f9' },
+  loadMoreText: { fontSize: 13, color: '#25D366', fontWeight: '500' },
+  
+  // Empty states
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 100 },
   emptyIcon: { fontSize: 64, marginBottom: 16 },
   emptyText: { fontSize: 18, fontWeight: '600', color: '#333' },
   emptySubtext: { fontSize: 14, color: '#666', marginTop: 8 },
+  emptyChannel: { padding: 20, alignItems: 'center' },
+  emptyChannelText: { fontSize: 13, color: '#999' },
+  loadingChannel: { padding: 20, alignItems: 'center' },
 });

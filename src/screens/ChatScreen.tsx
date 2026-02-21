@@ -52,6 +52,11 @@ export function ChatScreen() {
   const [isSending, setIsSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   
+  // Pagination for infinite scroll
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const MESSAGES_PER_PAGE = 30;
+  
   // Modals
   const [showActions, setShowActions] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
@@ -112,19 +117,37 @@ export function ChatScreen() {
     }
   }, [conversationId]);
 
-  const loadMessages = useCallback(async () => {
+  const loadMessages = useCallback(async (loadMore = false) => {
     try {
-      const data = await conversationsService.getMessages(conversationId);
+      if (loadMore) {
+        if (!hasMoreMessages || isLoadingMore) return;
+        setIsLoadingMore(true);
+      }
+      
+      const offset = loadMore ? messages.length : 0;
+      const data = await conversationsService.getMessages(conversationId, MESSAGES_PER_PAGE, offset);
+      
+      // Sort newest first for display (inverted list shows newest at bottom)
       const sorted = data.sort((a: Message, b: Message) => 
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
-      setMessages(sorted);
+      
+      if (loadMore) {
+        // Prepend older messages (they have earlier dates)
+        setMessages(prev => [...prev, ...sorted]);
+      } else {
+        setMessages(sorted);
+      }
+      
+      // Check if there are more messages
+      setHasMoreMessages(data.length === MESSAGES_PER_PAGE);
     } catch (error) {
       console.error('Error loading messages:', error);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
-  }, [conversationId]);
+  }, [conversationId, messages.length, hasMoreMessages, isLoadingMore]);
 
   const loadTags = useCallback(async () => {
     try {
@@ -157,12 +180,12 @@ export function ChatScreen() {
     },
     onNewMessage: (event) => {
       // New message received - reload messages
-      loadMessages();
+      loadMessages(false);
       conversationsService.markAsRead(conversationId).catch(console.error);
     },
     onMessageUpdated: (event) => {
       // Message updated (e.g., transcription) - reload messages
-      loadMessages();
+      loadMessages(false);
     },
     onConnected: () => {
       console.log('[Chat] SSE connected');
@@ -176,14 +199,14 @@ export function ChatScreen() {
 
   useEffect(() => {
     loadConversation();
-    loadMessages();
+    loadMessages(false);
     loadTags();
     conversationsService.markAsRead(conversationId).catch(console.error);
     
     // Fallback polling when SSE is not connected (every 10s instead of 5s)
     const interval = setInterval(() => {
       if (!sseConnected) {
-        loadMessages();
+        loadMessages(false);
       }
     }, 10000);
     
@@ -196,7 +219,7 @@ export function ChatScreen() {
         clearInterval(recordingTimer.current);
       }
     };
-  }, [conversationId, loadConversation, loadMessages, loadTags, sseConnected]);
+  }, [conversationId]);
 
   // Check for shortcut trigger
   useEffect(() => {
@@ -1312,9 +1335,19 @@ export function ChatScreen() {
           keyExtractor={(item) => item.id_message}
           renderItem={renderMessage}
           contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+          inverted
+          onEndReached={() => loadMessages(true)}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator size="small" color="#25D366" />
+                <Text style={styles.loadingMoreText}>Carregando...</Text>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
+            <View style={[styles.emptyContainer, { transform: [{ scaleY: -1 }] }]}>
               <Text style={styles.emptyText}>Sem mensagens</Text>
             </View>
           }
@@ -1868,6 +1901,8 @@ const styles = StyleSheet.create({
   statusPending: { fontSize: 12, color: '#999' },
   statusFailed: { fontSize: 12 },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
+  loadingMore: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8 },
+  loadingMoreText: { fontSize: 13, color: '#666' },
   emptyText: { fontSize: 16, color: '#666' },
   
   // Quoted message

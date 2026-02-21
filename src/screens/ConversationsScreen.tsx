@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,14 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
-  SectionList,
+  Animated,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { conversationsService, tagsService, channelsService } from '../services';
 import type { Conversation, Tag } from '../types';
 import { useInboxSSE } from '../hooks/useInboxSSE';
+import { colors, spacing, radius, typography, shadows } from '../theme';
 
 type RootStackParamList = {
   Conversations: undefined;
@@ -54,8 +55,6 @@ export function ConversationsScreen() {
   // SSE for real-time updates
   const { isConnected } = useInboxSSE({
     onNewMessage: (event) => {
-      console.log('[Inbox] New message event:', event.id_conversation);
-      // Update the conversation in the list
       setSections(prev => prev.map(section => ({
         ...section,
         data: section.data.map(conv => {
@@ -72,23 +71,14 @@ export function ConversationsScreen() {
       })));
     },
     onConversationUpdated: (event) => {
-      console.log('[Inbox] Conversation updated:', event.id_conversation);
-      // Refresh the specific channel's conversations
       if (event.id_channel) {
         loadChannelConversations(event.id_channel, false);
       }
     },
-    onConnected: () => {
-      console.log('[Inbox] SSE connected');
-      setSseConnected(true);
-    },
-    onDisconnected: () => {
-      console.log('[Inbox] SSE disconnected');
-      setSseConnected(false);
-    },
+    onConnected: () => setSseConnected(true),
+    onDisconnected: () => setSseConnected(false),
   });
 
-  // Load channels and initial conversations
   const loadData = useCallback(async () => {
     try {
       const [channelsData, tagsData] = await Promise.all([
@@ -99,7 +89,6 @@ export function ConversationsScreen() {
       setChannels(channelsData);
       setTags(tagsData);
       
-      // Initialize sections with channels
       const initialSections: ChannelSection[] = channelsData.map((ch: Channel) => ({
         channel: ch,
         data: [],
@@ -109,12 +98,10 @@ export function ConversationsScreen() {
       }));
       setSections(initialSections);
       
-      // Load first page for each channel
       for (const channel of channelsData) {
         loadChannelPage(channel.id_channel, 1, false);
       }
       
-      // Expand first channel by default
       if (channelsData.length > 0) {
         setExpandedChannels(new Set([channelsData[0].id_channel]));
       }
@@ -128,28 +115,19 @@ export function ConversationsScreen() {
 
   const loadChannelPage = async (channelId: string, page: number, loadMore: boolean) => {
     setSections(prev => prev.map(s => 
-      s.channel.id_channel === channelId 
-        ? { ...s, isLoading: true }
-        : s
+      s.channel.id_channel === channelId ? { ...s, isLoading: true } : s
     ));
 
     try {
-      console.log(`[Inbox] Loading channel ${channelId}, page ${page}`);
       const response = await conversationsService.getAll({ 
         limit: ITEMS_PER_PAGE, 
         page: page,
         id_channel: channelId,
       });
       
-      console.log(`[Inbox] Got ${response.length} conversations for page ${page}`);
-      
       setSections(prev => prev.map(s => {
         if (s.channel.id_channel !== channelId) return s;
-        
-        const newData = loadMore 
-          ? [...s.data, ...response]
-          : response;
-        
+        const newData = loadMore ? [...s.data, ...response] : response;
         return {
           ...s,
           data: newData,
@@ -161,9 +139,7 @@ export function ConversationsScreen() {
     } catch (error) {
       console.error('Error loading channel conversations:', error);
       setSections(prev => prev.map(s => 
-        s.channel.id_channel === channelId 
-          ? { ...s, isLoading: false }
-          : s
+        s.channel.id_channel === channelId ? { ...s, isLoading: false } : s
       ));
     }
   };
@@ -171,7 +147,6 @@ export function ConversationsScreen() {
   const loadMoreConversations = (channelId: string) => {
     const section = sections.find(s => s.channel.id_channel === channelId);
     if (section && section.hasMore && !section.isLoading) {
-      console.log(`[Inbox] Load more for ${channelId}, current page: ${section.page}`);
       loadChannelPage(channelId, section.page, true);
     }
   };
@@ -184,11 +159,7 @@ export function ConversationsScreen() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadData(); }, []));
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -198,11 +169,8 @@ export function ConversationsScreen() {
   const toggleChannel = (channelId: string) => {
     setExpandedChannels(prev => {
       const next = new Set(prev);
-      if (next.has(channelId)) {
-        next.delete(channelId);
-      } else {
-        next.add(channelId);
-      }
+      if (next.has(channelId)) next.delete(channelId);
+      else next.add(channelId);
       return next;
     });
   };
@@ -214,62 +182,54 @@ export function ConversationsScreen() {
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 0) {
-      return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    } else if (diffDays === 1) {
-      return 'ontem';
-    } else if (diffDays < 7) {
-      return date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-    }
+    if (diffDays === 0) return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (diffDays === 1) return 'ontem';
+    if (diffDays < 7) return date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   };
 
-  const getTagById = (tagId: string): Tag | undefined => {
-    return tags.find(t => t.id_tag === tagId);
-  };
-
-  const MessageStatus = ({ status, direction }: { status?: string; direction?: string }) => {
-    if (direction !== 'outbound') return null;
-    
-    switch (status) {
-      case 'read':
-        return <Text style={styles.statusRead}>✓✓</Text>;
-      case 'delivered':
-        return <Text style={styles.statusDelivered}>✓✓</Text>;
-      case 'sent':
-        return <Text style={styles.statusSent}>✓</Text>;
-      case 'queued':
-      case 'sending':
-      case 'pending':
-        return <Text style={styles.statusPending}>⏱</Text>;
-      case 'failed':
-      case 'cancelled':
-        return <Text style={styles.statusFailed}>⚠️</Text>;
-      default:
-        return null;
-    }
-  };
+  const getTagById = (tagId: string): Tag | undefined => tags.find(t => t.id_tag === tagId);
 
   const getChannelIcon = (type: string) => {
     switch (type?.toLowerCase()) {
       case 'whatsapp': return '📱';
       case 'telegram': return '✈️';
       case 'instagram': return '📷';
-      case 'messenger': return '💬';
-      default: return '📨';
+      default: return '💬';
     }
+  };
+
+  const MessageStatus = ({ status, direction }: { status?: string; direction?: string }) => {
+    if (direction !== 'outbound') return null;
+    
+    const statusConfig: Record<string, { text: string; color: string }> = {
+      read: { text: '✓✓', color: '#53bdeb' },
+      delivered: { text: '✓✓', color: colors.textTertiary },
+      sent: { text: '✓', color: colors.textTertiary },
+      queued: { text: '⏱', color: colors.textTertiary },
+      sending: { text: '⏱', color: colors.textTertiary },
+      pending: { text: '⏱', color: colors.textTertiary },
+      failed: { text: '⚠', color: colors.error },
+      cancelled: { text: '⚠', color: colors.error },
+    };
+    
+    const config = statusConfig[status || ''];
+    if (!config) return null;
+    
+    return <Text style={[styles.statusIcon, { color: config.color }]}>{config.text}</Text>;
   };
 
   const renderConversation = (item: Conversation) => {
     const hasUnread = (item.unread_count || 0) > 0;
     const convTags = (item.tags || []).map(getTagById).filter(Boolean) as Tag[];
     const assigneeName = item.assigned_to_name || 
-      (item.assigned_to_agent_name ? `🤖 ${item.assigned_to_agent_name}` : null);
+      (item.assigned_to_agent_name ? item.assigned_to_agent_name : null);
     const isAgent = !!item.assigned_to_agent_name || !!item.assigned_to_agent_id;
 
     return (
       <TouchableOpacity
-        style={styles.item}
+        key={item.id_conversation}
+        style={styles.conversationCard}
         onPress={() => navigation.navigate('Chat', {
           conversationId: item.id_conversation,
           contactName: item.contact_name || item.contact_phone || 'Conversa',
@@ -277,7 +237,7 @@ export function ConversationsScreen() {
         activeOpacity={0.7}
       >
         {/* Avatar */}
-        <View style={styles.avatarContainer}>
+        <View style={styles.avatarWrapper}>
           {item.contact_avatar_url ? (
             <Image source={{ uri: item.contact_avatar_url }} style={styles.avatar} />
           ) : (
@@ -287,60 +247,59 @@ export function ConversationsScreen() {
               </Text>
             </View>
           )}
+          {hasUnread && <View style={styles.onlineIndicator} />}
         </View>
 
         {/* Content */}
-        <View style={styles.content}>
-          <View style={styles.row1}>
-            <Text style={[styles.name, hasUnread && styles.nameUnread]} numberOfLines={1}>
+        <View style={styles.conversationContent}>
+          {/* Row 1: Name + Time */}
+          <View style={styles.topRow}>
+            <Text style={[styles.contactName, hasUnread && styles.contactNameUnread]} numberOfLines={1}>
               {item.contact_name || item.contact_phone || 'Sem nome'}
             </Text>
-            <Text style={[styles.time, hasUnread && styles.timeUnread]}>
+            <Text style={[styles.timeText, hasUnread && styles.timeTextUnread]}>
               {formatTime(item.last_message_at)}
             </Text>
           </View>
 
-          <View style={styles.row2}>
-            <View style={styles.messageRow}>
+          {/* Row 2: Message preview */}
+          <View style={styles.middleRow}>
+            <View style={styles.messagePreview}>
               <MessageStatus 
                 status={(item as any).last_message_status} 
                 direction={(item as any).last_message_direction} 
               />
-              <Text style={[styles.message, hasUnread && styles.messageUnread]} numberOfLines={1}>
+              <Text style={[styles.messageText, hasUnread && styles.messageTextUnread]} numberOfLines={1}>
                 {(item as any).last_message_text || 'Nenhuma mensagem'}
               </Text>
             </View>
-            <View style={styles.badges}>
-              {assigneeName && (
-                <View style={[styles.assigneeBadge, isAgent && styles.assigneeBadgeAgent]}>
-                  <Text style={[styles.assigneeText, isAgent && styles.assigneeTextAgent]}>
-                    {isAgent ? '🤖' : '👤'} {assigneeName.replace('🤖 ', '')}
-                  </Text>
-                </View>
-              )}
-              {hasUnread && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadText}>
-                    {item.unread_count! > 99 ? '99+' : item.unread_count}
-                  </Text>
-                </View>
-              )}
-            </View>
           </View>
 
-          {convTags.length > 0 && (
-            <View style={styles.tagsRow}>
-              {convTags.slice(0, 3).map(tag => (
-                <View key={tag.id_tag} style={[styles.tag, { backgroundColor: tag.color + '20' }]}>
+          {/* Row 3: Badges */}
+          <View style={styles.bottomRow}>
+            <View style={styles.badgesLeft}>
+              {assigneeName && (
+                <View style={[styles.badge, isAgent ? styles.badgeAgent : styles.badgeHuman]}>
+                  <Text style={[styles.badgeText, isAgent ? styles.badgeTextAgent : styles.badgeTextHuman]}>
+                    {isAgent ? '🤖' : '👤'} {assigneeName}
+                  </Text>
+                </View>
+              )}
+              {convTags.slice(0, 2).map(tag => (
+                <View key={tag.id_tag} style={[styles.tagBadge, { backgroundColor: tag.color + '15' }]}>
                   <View style={[styles.tagDot, { backgroundColor: tag.color }]} />
                   <Text style={[styles.tagText, { color: tag.color }]}>{tag.name}</Text>
                 </View>
               ))}
-              {convTags.length > 3 && (
-                <Text style={styles.moreTags}>+{convTags.length - 3}</Text>
-              )}
             </View>
-          )}
+            {hasUnread && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadText}>
+                  {item.unread_count! > 99 ? '99+' : item.unread_count}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -351,62 +310,56 @@ export function ConversationsScreen() {
     const unreadCount = section.data.reduce((sum, c) => sum + (c.unread_count || 0), 0);
     
     return (
-      <View key={section.channel.id_channel}>
+      <View key={section.channel.id_channel} style={styles.channelSection}>
         {/* Channel Header */}
         <TouchableOpacity 
           style={styles.channelHeader}
           onPress={() => toggleChannel(section.channel.id_channel)}
+          activeOpacity={0.7}
         >
-          <View style={[
-            styles.channelIcon,
-            unreadCount > 0 && styles.channelIconActive
-          ]}>
-            <Text style={styles.channelIconText}>
-              {getChannelIcon(section.channel.type)}
-            </Text>
+          <View style={[styles.channelIconWrapper, unreadCount > 0 && styles.channelIconActive]}>
+            <Text style={styles.channelIconText}>{getChannelIcon(section.channel.type)}</Text>
           </View>
-          <Text style={styles.channelName}>{section.channel.name}</Text>
-          <Text style={styles.channelCount}>({section.data.length})</Text>
+          <View style={styles.channelInfo}>
+            <Text style={styles.channelName}>{section.channel.name}</Text>
+            <Text style={styles.channelCount}>{section.data.length} conversas</Text>
+          </View>
           {unreadCount > 0 && (
-            <View style={styles.channelUnread}>
+            <View style={styles.channelUnreadBadge}>
               <Text style={styles.channelUnreadText}>{unreadCount}</Text>
             </View>
           )}
-          <Text style={styles.channelChevron}>{isExpanded ? '▼' : '▶'}</Text>
+          <Text style={styles.chevron}>{isExpanded ? '▾' : '▸'}</Text>
         </TouchableOpacity>
 
         {/* Conversations */}
         {isExpanded && (
-          <View>
-            {section.data.map(conv => renderConversation(conv))}
-            
-            {/* Load more button */}
-            {section.hasMore && section.data.length > 0 && (
-              <TouchableOpacity
-                style={styles.loadMoreBtn}
-                onPress={() => loadMoreConversations(section.channel.id_channel)}
-                disabled={section.isLoading}
-              >
-                {section.isLoading ? (
-                  <ActivityIndicator size="small" color="#25D366" />
-                ) : (
-                  <Text style={styles.loadMoreText}>Carregar página {section.page}... ({section.data.length} carregados)</Text>
-                )}
-              </TouchableOpacity>
-            )}
-            
-            {/* Empty state */}
-            {section.data.length === 0 && !section.isLoading && (
+          <View style={styles.conversationsList}>
+            {section.isLoading && section.data.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : section.data.length === 0 ? (
               <View style={styles.emptyChannel}>
                 <Text style={styles.emptyChannelText}>Nenhuma conversa</Text>
               </View>
-            )}
-            
-            {/* Loading state */}
-            {section.isLoading && section.data.length === 0 && (
-              <View style={styles.loadingChannel}>
-                <ActivityIndicator size="small" color="#25D366" />
-              </View>
+            ) : (
+              <>
+                {section.data.map(conv => renderConversation(conv))}
+                {section.hasMore && (
+                  <TouchableOpacity
+                    style={styles.loadMoreButton}
+                    onPress={() => loadMoreConversations(section.channel.id_channel)}
+                    disabled={section.isLoading}
+                  >
+                    {section.isLoading ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Text style={styles.loadMoreText}>Carregar mais</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
         )}
@@ -416,30 +369,34 @@ export function ConversationsScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#25D366" />
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Carregando conversas...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Filter tabs with SSE indicator */}
-      <View style={styles.filterTabs}>
-        <View style={[styles.sseIndicator, sseConnected ? styles.sseConnected : styles.sseDisconnected]} />
-        {(['todas', 'minhas', 'fila'] as const).map(tab => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.filterTab, filter === tab && styles.filterTabActive]}
-            onPress={() => setFilter(tab)}
-          >
-            <Text style={[styles.filterTabText, filter === tab && styles.filterTabTextActive]}>
-              {tab === 'todas' ? 'Todas' : tab === 'minhas' ? 'Minhas' : 'Fila'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Header with filters */}
+      <View style={styles.header}>
+        <View style={styles.filterContainer}>
+          <View style={[styles.sseIndicator, sseConnected ? styles.sseOn : styles.sseOff]} />
+          {(['todas', 'minhas', 'fila'] as const).map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.filterPill, filter === tab && styles.filterPillActive]}
+              onPress={() => setFilter(tab)}
+            >
+              <Text style={[styles.filterText, filter === tab && styles.filterTextActive]}>
+                {tab === 'todas' ? 'Todas' : tab === 'minhas' ? 'Minhas' : 'Fila'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
+      {/* Content */}
       <FlatList
         data={sections}
         keyExtractor={(item) => item.channel.id_channel}
@@ -448,148 +405,348 @@ export function ConversationsScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={['#25D366']}
-            tintColor="#25D366"
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
+          <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>💬</Text>
-            <Text style={styles.emptyText}>Nenhum canal</Text>
-            <Text style={styles.emptySubtext}>Configure seus canais de comunicação</Text>
+            <Text style={styles.emptyTitle}>Nenhum canal</Text>
+            <Text style={styles.emptySubtitle}>Configure seus canais de comunicação</Text>
           </View>
         }
-        contentContainerStyle={sections.length === 0 ? { flex: 1 } : { paddingBottom: 20 }}
+        contentContainerStyle={sections.length === 0 ? { flex: 1 } : { paddingBottom: spacing.xxxl }}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   
-  // Filter tabs
-  filterTabs: {
+  // Loading
+  loadingScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    gap: spacing.md,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  loadingContainer: {
+    padding: spacing.xl,
+    alignItems: 'center',
+  },
+  
+  // Header & Filters
+  header: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  filterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    margin: 12,
-    marginBottom: 4,
-    borderRadius: 8,
-    padding: 4,
+    backgroundColor: colors.surfaceHover,
+    borderRadius: radius.lg,
+    padding: spacing.xs,
   },
-  filterTab: {
+  sseIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: spacing.sm,
+  },
+  sseOn: { backgroundColor: colors.success },
+  sseOff: { backgroundColor: colors.warning },
+  filterPill: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
     alignItems: 'center',
-    borderRadius: 6,
   },
-  filterTabActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  filterPillActive: {
+    backgroundColor: colors.surface,
+    ...shadows.xs,
   },
-  filterTabText: { fontSize: 13, fontWeight: '500', color: '#666' },
-  filterTabTextActive: { color: '#25D366', fontWeight: '600' },
-  sseIndicator: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  sseConnected: { backgroundColor: '#25D366' },
-  sseDisconnected: { backgroundColor: '#f39c12' },
+  filterText: {
+    ...typography.label,
+    color: colors.textSecondary,
+  },
+  filterTextActive: {
+    color: colors.primary,
+  },
   
-  // Channel header
+  // Channel Section
+  channelSection: {
+    marginTop: spacing.sm,
+  },
   channelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#f8f8f8',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.borderLight,
   },
-  channelIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#e0e0e0',
+  channelIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceHover,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
   },
   channelIconActive: {
-    backgroundColor: '#25D366',
+    backgroundColor: colors.primarySoft,
   },
-  channelIconText: { fontSize: 14 },
-  channelName: { fontSize: 14, fontWeight: '600', color: '#333' },
-  channelCount: { fontSize: 12, color: '#999', marginLeft: 4 },
-  channelUnread: {
-    backgroundColor: '#25D366',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+  channelIconText: {
+    fontSize: 18,
+  },
+  channelInfo: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+  channelName: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  channelCount: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  channelUnreadBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.full,
+    minWidth: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.sm,
+    marginRight: spacing.sm,
   },
-  channelUnreadText: { fontSize: 11, color: '#fff', fontWeight: '700' },
-  channelChevron: { fontSize: 10, color: '#999', marginLeft: 'auto' },
+  channelUnreadText: {
+    ...typography.labelSmall,
+    color: colors.textInverse,
+    fontWeight: '700',
+  },
+  chevron: {
+    fontSize: 16,
+    color: colors.textTertiary,
+  },
   
-  // Conversation item
-  item: {
+  // Conversations List
+  conversationsList: {
+    backgroundColor: colors.surface,
+  },
+  conversationCard: {
     flexDirection: 'row',
-    padding: 12,
-    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    borderBottomColor: colors.borderLight,
   },
-  avatarContainer: { marginRight: 12 },
-  avatar: { width: 50, height: 50, borderRadius: 25 },
-  avatarPlaceholder: { backgroundColor: '#25D366', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: '#fff', fontSize: 20, fontWeight: '600' },
-  content: { flex: 1, justifyContent: 'center' },
-  row1: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  name: { fontSize: 16, color: '#333', flex: 1, marginRight: 8 },
-  nameUnread: { fontWeight: '700', color: '#000' },
-  time: { fontSize: 12, color: '#999' },
-  timeUnread: { color: '#25D366', fontWeight: '600' },
-  row2: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  messageRow: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 },
-  message: { fontSize: 14, color: '#666', flex: 1 },
-  messageUnread: { color: '#333', fontWeight: '500' },
-  badges: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  assigneeBadge: { backgroundColor: '#e3f2fd', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  assigneeBadgeAgent: { backgroundColor: '#f3e5f5' },
-  assigneeText: { fontSize: 11, color: '#1976d2', fontWeight: '500' },
-  assigneeTextAgent: { color: '#7b1fa2' },
-  unreadBadge: { backgroundColor: '#25D366', minWidth: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
-  unreadText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  tagsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 4, gap: 4 },
-  tag: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  tagDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
-  tagText: { fontSize: 10, fontWeight: '600' },
-  moreTags: { fontSize: 10, color: '#999' },
   
-  // Message status
-  statusRead: { fontSize: 14, color: '#53bdeb', marginRight: 4, fontWeight: '700' },
-  statusDelivered: { fontSize: 14, color: '#999', marginRight: 4, fontWeight: '700' },
-  statusSent: { fontSize: 14, color: '#999', marginRight: 4 },
-  statusPending: { fontSize: 12, color: '#999', marginRight: 4 },
-  statusFailed: { fontSize: 12, marginRight: 4 },
+  // Avatar
+  avatarWrapper: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
+  avatarPlaceholder: {
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    ...typography.h3,
+    color: colors.textInverse,
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
   
-  // Load more
-  loadMoreBtn: { paddingVertical: 14, alignItems: 'center', backgroundColor: '#f9f9f9' },
-  loadMoreText: { fontSize: 13, color: '#25D366', fontWeight: '500' },
+  // Conversation Content
+  conversationContent: {
+    flex: 1,
+    marginLeft: spacing.md,
+    justifyContent: 'center',
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  contactName: {
+    ...typography.body,
+    fontWeight: '500',
+    color: colors.textPrimary,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  contactNameUnread: {
+    fontWeight: '700',
+  },
+  timeText: {
+    ...typography.caption,
+    color: colors.textTertiary,
+  },
+  timeTextUnread: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  middleRow: {
+    marginTop: spacing.xs,
+  },
+  messagePreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusIcon: {
+    fontSize: 14,
+    marginRight: spacing.xs,
+    fontWeight: '700',
+  },
+  messageText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  messageTextUnread: {
+    color: colors.textPrimary,
+    fontWeight: '500',
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  badgesLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flex: 1,
+  },
   
-  // Empty states
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 100 },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#333' },
-  emptySubtext: { fontSize: 14, color: '#666', marginTop: 8 },
-  emptyChannel: { padding: 20, alignItems: 'center' },
-  emptyChannelText: { fontSize: 13, color: '#999' },
-  loadingChannel: { padding: 20, alignItems: 'center' },
+  // Badges
+  badge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  badgeAgent: {
+    backgroundColor: colors.agentBg,
+  },
+  badgeHuman: {
+    backgroundColor: colors.humanBg,
+  },
+  badgeText: {
+    ...typography.labelSmall,
+  },
+  badgeTextAgent: {
+    color: colors.agentText,
+  },
+  badgeTextHuman: {
+    color: colors.humanText,
+  },
+  tagBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.xs,
+  },
+  tagDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: spacing.xs,
+  },
+  tagText: {
+    ...typography.labelSmall,
+    fontWeight: '600',
+  },
+  unreadBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.full,
+    minWidth: 22,
+    height: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  unreadText: {
+    ...typography.labelSmall,
+    color: colors.textInverse,
+    fontWeight: '700',
+  },
+  
+  // Load More
+  loadMoreButton: {
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+    backgroundColor: colors.surfaceHover,
+  },
+  loadMoreText: {
+    ...typography.label,
+    color: colors.primary,
+  },
+  
+  // Empty States
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  emptySubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  emptyChannel: {
+    padding: spacing.xl,
+    alignItems: 'center',
+  },
+  emptyChannelText: {
+    ...typography.body,
+    color: colors.textTertiary,
+  },
 });

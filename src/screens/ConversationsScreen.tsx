@@ -73,6 +73,30 @@ export function ConversationsScreen() {
     }
   };
 
+  // Message status indicator
+  const getMessageStatusIcon = (status?: string, direction?: string) => {
+    // Only show for outbound messages
+    if (direction !== 'outbound') return null;
+    
+    switch (status) {
+      case 'read':
+        return <Text style={styles.msgStatusRead}>✓✓</Text>;
+      case 'delivered':
+        return <Text style={styles.msgStatusDelivered}>✓✓</Text>;
+      case 'sent':
+        return <Text style={styles.msgStatusSent}>✓</Text>;
+      case 'queued':
+      case 'sending':
+      case 'pending':
+        return <Text style={styles.msgStatusPending}>⏱</Text>;
+      case 'failed':
+      case 'cancelled':
+        return <Text style={styles.msgStatusFailed}>⚠️</Text>;
+      default:
+        return null;
+    }
+  };
+
   const renderItem = ({ item }: { item: Conversation }) => (
     <TouchableOpacity
       style={styles.conversationItem}
@@ -103,6 +127,20 @@ export function ConversationsScreen() {
           <Text style={styles.timestamp}>{formatTime(item.last_message_at)}</Text>
         </View>
         
+        {/* Last message preview with status */}
+        <View style={styles.lastMessageRow}>
+          {getMessageStatusIcon(
+            (item as any).last_message_status, 
+            (item as any).last_message_direction
+          )}
+          <Text style={[
+            styles.lastMessage,
+            item.unread_count && item.unread_count > 0 && styles.lastMessageUnread
+          ]} numberOfLines={1}>
+            {(item as any).last_message_text || 'Nenhuma mensagem'}
+          </Text>
+        </View>
+
         <View style={styles.conversationFooter}>
           <View style={styles.metaContainer}>
             {item.channel_type && (
@@ -293,5 +331,47 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 14,
     color: '#666',
+  },
+  // Last message
+  lastMessageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  lastMessage: {
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+  },
+  lastMessageUnread: {
+    color: '#333',
+    fontWeight: '500',
+  },
+  // Message status icons
+  msgStatusRead: {
+    fontSize: 14,
+    color: '#53bdeb',
+    marginRight: 4,
+    fontWeight: '600',
+  },
+  msgStatusDelivered: {
+    fontSize: 14,
+    color: '#999',
+    marginRight: 4,
+    fontWeight: '600',
+  },
+  msgStatusSent: {
+    fontSize: 14,
+    color: '#999',
+    marginRight: 4,
+  },
+  msgStatusPending: {
+    fontSize: 12,
+    color: '#999',
+    marginRight: 4,
+  },
+  msgStatusFailed: {
+    fontSize: 12,
+    marginRight: 4,
   },
 });

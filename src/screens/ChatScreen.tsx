@@ -695,6 +695,52 @@ export function ChatScreen() {
   };
 
   // ============ HELPERS ============
+  
+  // Render message status indicator
+  const renderMessageStatus = (status?: string) => {
+    switch (status) {
+      case 'read':
+        return (
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusRead}>✓✓</Text>
+          </View>
+        );
+      case 'delivered':
+        return (
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusDelivered}>✓✓</Text>
+          </View>
+        );
+      case 'sent':
+        return (
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusSent}>✓</Text>
+          </View>
+        );
+      case 'queued':
+      case 'sending':
+      case 'pending':
+        return (
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusPending}>⏱</Text>
+          </View>
+        );
+      case 'failed':
+      case 'cancelled':
+        return (
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusFailed}>⚠️</Text>
+          </View>
+        );
+      default:
+        return (
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusPending}>○</Text>
+          </View>
+        );
+    }
+  };
+
   const getMediaUrl = (message: Message): string => {
     const url = message.stored_media_url || message.media_url || '';
     if (!url) return '';
@@ -780,11 +826,16 @@ export function ChatScreen() {
   const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.from_me || item.direction === 'outbound';
     const mediaUrl = getMediaUrl(item);
+    const isFailed = item.status === 'failed' || item.status === 'cancelled';
     
     return (
       <Pressable 
         onLongPress={() => handleMessageLongPress(item)}
-        style={[styles.messageContainer, isMe ? styles.myMessage : styles.theirMessage]}
+        style={[
+          styles.messageContainer, 
+          isMe ? styles.myMessage : styles.theirMessage,
+          isFailed && styles.failedMessage
+        ]}
       >
         {/* Sender name */}
         {!isMe && item.sender_display_name && (
@@ -1022,15 +1073,40 @@ export function ChatScreen() {
           </View>
         )}
 
+        {/* Error reason for failed messages */}
+        {isFailed && (item as any).error_reason && (
+          <Text style={styles.errorReason} numberOfLines={2}>
+            ⚠️ {(item as any).error_reason}
+          </Text>
+        )}
+
         {/* Footer */}
         <View style={styles.messageFooter}>
           <Text style={styles.timestamp}>{formatTime(item.created_at)}</Text>
-          {isMe && (
-            <Text style={[styles.status, item.status === 'read' && styles.statusRead]}>
-              {item.status === 'read' ? '✓✓' : item.status === 'delivered' ? '✓✓' : item.status === 'sent' ? '✓' : '○'}
-            </Text>
-          )}
+          {isMe && renderMessageStatus(item.status)}
         </View>
+
+        {/* Retry button for failed messages */}
+        {isFailed && isMe && (
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              Alert.alert(
+                'Mensagem Falhou',
+                (item as any).error_reason || 'Erro ao enviar mensagem',
+                [
+                  { text: 'OK', style: 'cancel' },
+                  { 
+                    text: 'Tentar Novamente', 
+                    onPress: () => handleSend(item.text_body || item.caption) 
+                  }
+                ]
+              );
+            }}
+          >
+            <Text style={styles.retryText}>Tentar novamente</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Reaction picker for this message */}
         {showReactionPicker === item.id_message && (
@@ -1545,12 +1621,40 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 0,
   },
+  failedMessage: {
+    backgroundColor: '#fee2e2',
+    borderColor: '#fca5a5',
+    borderWidth: 1,
+  },
+  errorReason: {
+    fontSize: 11,
+    color: '#dc2626',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  retryButton: {
+    marginTop: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#dc2626',
+    borderRadius: 12,
+    alignSelf: 'flex-end',
+  },
+  retryText: {
+    fontSize: 11,
+    color: '#fff',
+    fontWeight: '600',
+  },
   senderName: { fontSize: 12, fontWeight: '600', color: '#075E54', marginBottom: 2 },
   messageText: { fontSize: 15, color: '#333' },
   messageFooter: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 2 },
   timestamp: { fontSize: 11, color: '#999' },
-  status: { fontSize: 12, color: '#999', marginLeft: 4 },
-  statusRead: { color: '#53bdeb' },
+  statusContainer: { marginLeft: 4 },
+  statusRead: { fontSize: 14, color: '#53bdeb', fontWeight: '600' },
+  statusDelivered: { fontSize: 14, color: '#999', fontWeight: '600' },
+  statusSent: { fontSize: 14, color: '#999' },
+  statusPending: { fontSize: 12, color: '#999' },
+  statusFailed: { fontSize: 12 },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
   emptyText: { fontSize: 16, color: '#666' },
   

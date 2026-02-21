@@ -66,6 +66,9 @@ export interface Message {
   
   // Raw payload (for templates etc)
   raw_payload?: any;
+  
+  // Error info
+  error_reason?: string;
 }
 
 export interface Conversation {
@@ -106,6 +109,11 @@ export interface Conversation {
   created_at: string;
   updated_at?: string;
   closed_at?: string;
+  
+  // Last message info
+  last_message_text?: string;
+  last_message_status?: string;
+  last_message_direction?: 'inbound' | 'outbound';
   
   // Legacy fields for compatibility
   contact_id?: string;

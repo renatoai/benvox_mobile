@@ -33,17 +33,45 @@ export interface Message {
 
 export interface Conversation {
   id_conversation: string;
-  contact_id: string;
-  contact_name: string;
-  contact_phone: string;
+  id_contact: string;
+  id_channel: string;
+  id_tenant: string;
+  status: 'open' | 'closed' | 'pending';
+  priority?: string;
+  
+  // Contact info (joined)
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  contact_avatar_url?: string;
+  
+  // Channel info (joined)
+  channel_name?: string;
+  channel_type?: string;
+  channel_avatar_url?: string;
+  
+  // Assignment
+  assigned_to?: string;
+  assigned_to_name?: string;
+  assigned_to_agent_id?: string;
+  assigned_to_agent_name?: string;
+  assignment_type?: string;
+  
+  // Pipeline/Stage
+  id_pipeline?: string;
+  id_stage?: string;
+  
+  // Timestamps
+  last_message_at?: string;
+  created_at: string;
+  updated_at?: string;
+  closed_at?: string;
+  
+  // Legacy fields for compatibility
+  contact_id?: string;
   contact_profile_picture_url?: string;
   last_message?: string;
-  last_message_at?: string;
-  unread_count: number;
-  channel_type: string;
-  channel_id?: string;
-  assigned_to_agent_id?: string;
-  assignment_type?: string;
+  unread_count?: number;
   stage_id?: string;
   stage_name?: string;
   funnel_id?: string;
@@ -74,19 +102,29 @@ export interface Channel {
   created_at: string;
 }
 
-// Funnels & Stages
+// Funnels/Pipelines & Stages
 export interface Funnel {
-  id_funnel: string;
+  id_funnel?: string;
+  id_pipeline?: string;
+  id_tenant?: string;
   name: string;
   description?: string;
-  is_default: boolean;
+  version?: number;
+  is_published?: boolean;
+  is_active?: boolean;
+  is_default?: boolean;
+  stage_count?: number | string;
   stages?: FunnelStage[];
   created_at: string;
+  updated_at?: string;
+  published_at?: string;
 }
 
 export interface FunnelStage {
-  id_funnel_stage: string;
-  funnel_id: string;
+  id_funnel_stage?: string;
+  id_stage?: string;
+  funnel_id?: string;
+  pipeline_id?: string;
   name: string;
   color?: string;
   position: number;

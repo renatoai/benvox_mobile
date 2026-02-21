@@ -42,7 +42,10 @@ export function FunnelsScreen() {
   const renderItem = ({ item }: { item: Funnel }) => (
     <TouchableOpacity 
       style={styles.item}
-      onPress={() => navigation.navigate('FunnelDetail', { funnelId: item.id_funnel, name: item.name })}
+      onPress={() => navigation.navigate('FunnelDetail', { 
+        funnelId: item.id_pipeline || item.id_funnel, 
+        name: item.name 
+      })}
     >
       <View style={styles.itemIcon}>
         <Text style={styles.iconText}>🎯</Text>
@@ -50,18 +53,18 @@ export function FunnelsScreen() {
       <View style={styles.itemContent}>
         <View style={styles.itemHeader}>
           <Text style={styles.itemTitle}>{item.name}</Text>
-          {item.is_default && (
-            <View style={styles.defaultBadge}>
-              <Text style={styles.defaultBadgeText}>Padrão</Text>
+          {item.is_published && (
+            <View style={styles.publishedBadge}>
+              <Text style={styles.publishedBadgeText}>Ativo</Text>
             </View>
           )}
         </View>
         {item.description && (
           <Text style={styles.itemSubtitle} numberOfLines={1}>{item.description}</Text>
         )}
-        {item.stages && (
-          <Text style={styles.stagesCount}>{item.stages.length} etapas</Text>
-        )}
+        <Text style={styles.stagesCount}>
+          {item.stage_count || item.stages?.length || 0} etapas
+        </Text>
       </View>
       <Text style={styles.arrow}>›</Text>
     </TouchableOpacity>
@@ -79,7 +82,7 @@ export function FunnelsScreen() {
     <View style={styles.container}>
       <FlatList
         data={funnels}
-        keyExtractor={(item) => item.id_funnel}
+        keyExtractor={(item) => item.id_pipeline || item.id_funnel}
         renderItem={renderItem}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#25D366']} />
@@ -129,14 +132,14 @@ const styles = StyleSheet.create({
   itemTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
   itemSubtitle: { fontSize: 14, color: '#666', marginTop: 2 },
   stagesCount: { fontSize: 12, color: '#25D366', marginTop: 4, fontWeight: '500' },
-  defaultBadge: {
+  publishedBadge: {
     backgroundColor: '#e8f5e9',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 8,
   },
-  defaultBadgeText: { fontSize: 10, color: '#2e7d32', fontWeight: '600' },
+  publishedBadgeText: { fontSize: 10, color: '#2e7d32', fontWeight: '600' },
   arrow: { fontSize: 24, color: '#ccc' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
   emptyList: { flex: 1 },

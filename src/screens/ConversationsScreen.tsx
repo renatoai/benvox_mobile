@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { conversationsService } from '../services/conversations.service';
+import { conversationsService } from '../services';
 import type { Conversation } from '../types';
 
 type RootStackParamList = {
@@ -29,7 +29,7 @@ export function ConversationsScreen() {
 
   const loadConversations = useCallback(async () => {
     try {
-      const data = await conversationsService.getConversations();
+      const data = await conversationsService.getAll({ limit: 50 });
       setConversations(data);
     } catch (error) {
       console.error('Error loading conversations:', error);
@@ -64,40 +64,60 @@ export function ConversationsScreen() {
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   };
 
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'open': return '#25D366';
+      case 'closed': return '#999';
+      case 'pending': return '#f39c12';
+      default: return '#25D366';
+    }
+  };
+
   const renderItem = ({ item }: { item: Conversation }) => (
     <TouchableOpacity
       style={styles.conversationItem}
       onPress={() => navigation.navigate('Chat', {
         conversationId: item.id_conversation,
-        contactName: item.contact_name,
+        contactName: item.contact_name || item.contact_phone || 'Conversa',
       })}
     >
       <View style={styles.avatar}>
-        {item.contact_profile_picture_url ? (
+        {item.contact_avatar_url ? (
           <Image
-            source={{ uri: item.contact_profile_picture_url }}
+            source={{ uri: item.contact_avatar_url }}
             style={styles.avatarImage}
           />
         ) : (
           <Text style={styles.avatarText}>
-            {item.contact_name?.charAt(0)?.toUpperCase() || '?'}
+            {(item.contact_name || item.contact_phone || '?').charAt(0).toUpperCase()}
           </Text>
         )}
+        <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(item.status) }]} />
       </View>
       
       <View style={styles.conversationContent}>
         <View style={styles.conversationHeader}>
           <Text style={styles.contactName} numberOfLines={1}>
-            {item.contact_name || item.contact_phone}
+            {item.contact_name || item.contact_phone || 'Sem nome'}
           </Text>
           <Text style={styles.timestamp}>{formatTime(item.last_message_at)}</Text>
         </View>
         
         <View style={styles.conversationFooter}>
-          <Text style={styles.lastMessage} numberOfLines={1}>
-            {item.last_message || 'Nenhuma mensagem'}
-          </Text>
-          {item.unread_count > 0 && (
+          <View style={styles.metaContainer}>
+            {item.channel_type && (
+              <Text style={styles.channelBadge}>
+                {item.channel_type === 'whatsapp' ? '📱' : '💬'} 
+              </Text>
+            )}
+            {item.assigned_to_agent_name && (
+              <Text style={styles.agentBadge}>🤖 {item.assigned_to_agent_name}</Text>
+            )}
+            {item.assigned_to_name && !item.assigned_to_agent_name && (
+              <Text style={styles.assignedBadge}>👤 {item.assigned_to_name}</Text>
+            )}
+          </View>
+          {item.unread_count && item.unread_count > 0 && (
             <View style={styles.unreadBadge}>
               <Text style={styles.unreadCount}>
                 {item.unread_count > 99 ? '99+' : item.unread_count}
@@ -170,6 +190,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    position: 'relative',
   },
   avatarImage: {
     width: 50,
@@ -180,6 +201,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 20,
     fontWeight: '600',
+  },
+  statusIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   conversationContent: {
     flex: 1,
@@ -207,11 +238,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  lastMessage: {
-    fontSize: 14,
-    color: '#666',
+  metaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    marginRight: 8,
+  },
+  channelBadge: {
+    fontSize: 12,
+    marginRight: 6,
+  },
+  agentBadge: {
+    fontSize: 11,
+    color: '#1976d2',
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  assignedBadge: {
+    fontSize: 11,
+    color: '#666',
   },
   unreadBadge: {
     backgroundColor: '#25D366',

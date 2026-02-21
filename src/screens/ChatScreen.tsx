@@ -343,7 +343,8 @@ export function ChatScreen() {
       quoted_message_id: quoteMessageId,
     };
     
-    setMessages(prev => [...prev, tempMessage]);
+    // Add at START because list is inverted (newest first)
+    setMessages(prev => [tempMessage, ...prev]);
     
     try {
       const phone = conversation?.contact_phone;
@@ -393,7 +394,8 @@ export function ChatScreen() {
       status: 'pending',
     };
     
-    setMessages(prev => [...prev, tempMessage]);
+    // Add at START because list is inverted (newest first)
+    setMessages(prev => [tempMessage, ...prev]);
     
     try {
       const formData = new FormData();

@@ -296,9 +296,9 @@ export function ChatScreen() {
 
   const loadRoles = async () => {
     try {
-      // Use getAvailableRoles which returns string[]
+      // Returns { role: string; count: number }[]
       const availableRoles = await usersService.getAvailableRoles();
-      setRoles(availableRoles.map(r => ({ role: r, count: 0 })));
+      setRoles(availableRoles);
     } catch (error) {
       console.error('Error loading roles:', error);
     }

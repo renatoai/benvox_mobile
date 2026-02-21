@@ -36,8 +36,8 @@ export const usersService = {
     await api.delete(`/users/${id}`);
   },
 
-  async getAvailableRoles(): Promise<string[]> {
-    const response = await api.get('/users/roles/available');
+  async getAvailableRoles(): Promise<{ role: string; count: number }[]> {
+    const response = await api.get<{ role: string; count: number }[]>('/users/roles/available');
     return response.data;
   },
 

@@ -130,8 +130,19 @@ export const conversationsService = {
     await api.post(`/conversations/${conversationId}/unassign`);
   },
 
-  async transfer(conversationId: string, data: { agent_id?: string; transfer_to_human?: boolean; auto_respond?: boolean; skip_greeting?: boolean }): Promise<void> {
-    await api.post(`/conversations/${conversationId}/transfer`, data);
+  async transfer(conversationId: string, data: { 
+    agent_id?: string; 
+    user_id?: string;
+    transfer_to_human?: boolean; 
+    queue_role?: string;
+    stage_id?: string;
+    auto_respond?: boolean; 
+    skip_greeting?: boolean;
+    context_summary?: string;
+    priority?: 'low' | 'normal' | 'high' | 'urgent';
+  }): Promise<{ transferred_to: string; type: 'agent' | 'human' }> {
+    const response = await api.post(`/conversations/${conversationId}/transfer`, data);
+    return response.data;
   },
 
   async getStats(): Promise<any> {

@@ -24,8 +24,8 @@ import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import { conversationsService, contactsService, funnelsService, agentsService, tagsService, messagesService } from '../services';
-import type { Message, Conversation, AiAgent, Tag, FunnelStage } from '../types';
+import { conversationsService, contactsService, funnelsService, agentsService, tagsService, messagesService, usersService } from '../services';
+import type { Message, Conversation, AiAgent, Tag, FunnelStage, AppUser, Funnel } from '../types';
 import { useMessageSSE } from '../hooks/useMessageSSE';
 import { colors, spacing, radius, typography, shadows } from '../theme';
 
@@ -92,6 +92,22 @@ export function ChatScreen() {
   const [shortcuts, setShortcuts] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [shortcutSearch, setShortcutSearch] = useState('');
+  
+  // Transfer modal data
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [roles, setRoles] = useState<{ role: string; count: number }[]>([]);
+  const [funnels, setFunnels] = useState<Funnel[]>([]);
+  const [transferType, setTransferType] = useState<'agent' | 'user' | 'role' | 'queue' | 'stage'>('agent');
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [selectedFunnelId, setSelectedFunnelId] = useState<string | null>(null);
+  const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+  const [agentBehavior, setAgentBehavior] = useState<'greeting' | 'respond' | 'wait'>('greeting');
+  const [transferPriority, setTransferPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
+  const [transferContext, setTransferContext] = useState('');
+  const [transferFunnelStages, setTransferFunnelStages] = useState<FunnelStage[]>([]);
+  const [isTransferring, setIsTransferring] = useState(false);
 
   // Long press for message actions
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
@@ -266,6 +282,43 @@ export function ChatScreen() {
       setAgents(data);
     } catch (error) {
       console.error('Error loading agents:', error);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const data = await usersService.getAll();
+      setUsers(data);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
+
+  const loadRoles = async () => {
+    try {
+      // Use getAvailableRoles which returns string[]
+      const availableRoles = await usersService.getAvailableRoles();
+      setRoles(availableRoles.map(r => ({ role: r, count: 0 })));
+    } catch (error) {
+      console.error('Error loading roles:', error);
+    }
+  };
+
+  const loadFunnels = async () => {
+    try {
+      const data = await funnelsService.getAll();
+      setFunnels(data);
+    } catch (error) {
+      console.error('Error loading funnels:', error);
+    }
+  };
+
+  const loadFunnelStages = async (funnelId: string) => {
+    try {
+      const data = await funnelsService.getStages(funnelId);
+      setTransferFunnelStages(data);
+    } catch (error) {
+      console.error('Error loading funnel stages:', error);
     }
   };
 
@@ -730,26 +783,89 @@ export function ChatScreen() {
     setShowActions(false);
   };
 
-  const handleTransferToAgent = async (agentId: string) => {
+  const handleTransfer = async () => {
+    setIsTransferring(true);
     try {
-      await conversationsService.transfer(conversationId, { agent_id: agentId });
+      let payload: any = {};
+      
+      switch (transferType) {
+        case 'agent':
+          if (!selectedAgentId) {
+            Alert.alert('Erro', 'Selecione um agente');
+            return;
+          }
+          payload.agent_id = selectedAgentId;
+          // Map behavior to API params
+          if (agentBehavior === 'greeting') {
+            payload.auto_respond = false;
+            payload.skip_greeting = false;
+          } else if (agentBehavior === 'respond') {
+            payload.auto_respond = true;
+            payload.skip_greeting = true;
+          } else {
+            payload.auto_respond = false;
+            payload.skip_greeting = true;
+          }
+          break;
+          
+        case 'user':
+          if (!selectedUserId) {
+            Alert.alert('Erro', 'Selecione um atendente');
+            return;
+          }
+          payload.user_id = selectedUserId;
+          break;
+          
+        case 'role':
+          if (!selectedRole) {
+            Alert.alert('Erro', 'Selecione um departamento');
+            return;
+          }
+          payload.queue_role = selectedRole;
+          payload.priority = transferPriority;
+          break;
+          
+        case 'queue':
+          payload.transfer_to_human = true;
+          payload.priority = transferPriority;
+          break;
+          
+        case 'stage':
+          if (!selectedStageId) {
+            Alert.alert('Erro', 'Selecione uma etapa');
+            return;
+          }
+          payload.stage_id = selectedStageId;
+          break;
+      }
+      
+      if (transferContext.trim()) {
+        payload.context_summary = transferContext.trim();
+      }
+      
+      await conversationsService.transfer(conversationId, payload);
       await loadConversation();
-      Alert.alert('Sucesso', 'Transferido para agente!');
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível transferir');
+      Alert.alert('Sucesso', 'Transferido com sucesso!');
+      setShowTransfer(false);
+      resetTransferForm();
+    } catch (error: any) {
+      Alert.alert('Erro', error.response?.data?.message || 'Não foi possível transferir');
+    } finally {
+      setIsTransferring(false);
     }
-    setShowTransfer(false);
   };
 
-  const handleTransferToHuman = async () => {
-    try {
-      await conversationsService.transfer(conversationId, { transfer_to_human: true });
-      await loadConversation();
-      Alert.alert('Sucesso', 'Transferido para atendimento humano!');
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível transferir');
-    }
-    setShowTransfer(false);
+  const resetTransferForm = () => {
+    setTransferType('agent');
+    setSelectedAgentId(null);
+    setSelectedUserId(null);
+    setSelectedRole(null);
+    setSelectedFunnelId(null);
+    setSelectedStageId(null);
+    setAgentBehavior('greeting');
+    setTransferPriority('normal');
+    setTransferContext('');
+    setTransferFunnelStages([]);
   };
 
   const handleMoveStage = async (stageId: string) => {
@@ -764,7 +880,14 @@ export function ChatScreen() {
   };
 
   const openTransferModal = () => {
+    // Load all data for transfer
     loadAgents();
+    loadUsers();
+    loadRoles();
+    loadFunnels();
+    // Reset form
+    resetTransferForm();
+    if (agents.length > 0) setSelectedAgentId(agents[0].id_ai_agent);
     setShowTransfer(true);
     setShowActions(false);
   };
@@ -955,7 +1078,7 @@ export function ChatScreen() {
   const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.from_me || item.direction === 'outbound';
     const mediaUrl = getMediaUrl(item);
-    const isFailed = item.status === 'failed' || item.status === 'cancelled';
+    const isFailed = item.status === 'failed';
     
     const isHighlighted = item.id_message === highlightedMessageId;
     
@@ -1664,40 +1787,287 @@ export function ChatScreen() {
         </View>
       </Modal>
 
-      {/* Transfer Modal */}
+      {/* Transfer Modal - Complete Version */}
       <Modal visible={showTransfer} transparent animationType="slide" onRequestClose={() => setShowTransfer(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.transferSheet}>
-            <Text style={styles.sheetTitle}>Transferir Para</Text>
+          <View style={[styles.transferSheet, { maxHeight: '90%' }]}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Transferir Conversa</Text>
+              <TouchableOpacity onPress={() => setShowTransfer(false)}>
+                <Text style={{ fontSize: 24, color: '#666' }}>×</Text>
+              </TouchableOpacity>
+            </View>
             
-            <TouchableOpacity style={styles.transferItem} onPress={handleTransferToHuman}>
-              <Text style={styles.transferIcon}>👤</Text>
-              <View>
-                <Text style={styles.transferTitle}>Atendimento Humano</Text>
-                <Text style={styles.transferSubtitle}>Fila de atendentes</Text>
-              </View>
-            </TouchableOpacity>
-            
-            <Text style={styles.sectionLabel}>Agentes IA</Text>
-            <ScrollView style={styles.agentsList}>
-              {agents.map((agent) => (
-                <TouchableOpacity
-                  key={agent.id_ai_agent}
-                  style={styles.transferItem}
-                  onPress={() => handleTransferToAgent(agent.id_ai_agent)}
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+              {/* Transfer Type Selection */}
+              <Text style={styles.sectionLabel}>Transferir para:</Text>
+              <View style={styles.transferTypeGrid}>
+                <TouchableOpacity 
+                  style={[styles.transferTypeOption, transferType === 'agent' && styles.transferTypeSelected]}
+                  onPress={() => setTransferType('agent')}
                 >
-                  <Text style={styles.transferIcon}>🤖</Text>
-                  <View>
-                    <Text style={styles.transferTitle}>{agent.name}</Text>
-                    <Text style={styles.transferSubtitle}>{agent.model || 'gpt-4'}</Text>
-                  </View>
+                  <Text style={styles.transferTypeIcon}>🤖</Text>
+                  <Text style={[styles.transferTypeText, transferType === 'agent' && styles.transferTypeTextSelected]}>Agente IA</Text>
                 </TouchableOpacity>
-              ))}
+                <TouchableOpacity 
+                  style={[styles.transferTypeOption, transferType === 'user' && styles.transferTypeSelected]}
+                  onPress={() => setTransferType('user')}
+                >
+                  <Text style={styles.transferTypeIcon}>👤</Text>
+                  <Text style={[styles.transferTypeText, transferType === 'user' && styles.transferTypeTextSelected]}>Atendente</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.transferTypeOption, transferType === 'role' && styles.transferTypeSelected]}
+                  onPress={() => setTransferType('role')}
+                >
+                  <Text style={styles.transferTypeIcon}>👥</Text>
+                  <Text style={[styles.transferTypeText, transferType === 'role' && styles.transferTypeTextSelected]}>Departamento</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.transferTypeOption, transferType === 'queue' && styles.transferTypeSelected]}
+                  onPress={() => setTransferType('queue')}
+                >
+                  <Text style={styles.transferTypeIcon}>📋</Text>
+                  <Text style={[styles.transferTypeText, transferType === 'queue' && styles.transferTypeTextSelected]}>Fila Geral</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.transferTypeOption, transferType === 'stage' && styles.transferTypeSelected]}
+                  onPress={() => setTransferType('stage')}
+                >
+                  <Text style={styles.transferTypeIcon}>🔀</Text>
+                  <Text style={[styles.transferTypeText, transferType === 'stage' && styles.transferTypeTextSelected]}>Etapa</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {/* Agent Selection */}
+              {transferType === 'agent' && (
+                <View style={styles.transferSection}>
+                  <Text style={styles.sectionLabel}>Selecione o agente:</Text>
+                  {agents.map((agent) => (
+                    <TouchableOpacity
+                      key={agent.id_ai_agent}
+                      style={[styles.transferSelectItem, selectedAgentId === agent.id_ai_agent && styles.transferSelectItemSelected]}
+                      onPress={() => setSelectedAgentId(agent.id_ai_agent)}
+                    >
+                      <Text style={styles.transferSelectIcon}>🤖</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.transferSelectTitle}>{agent.name}</Text>
+                        <Text style={styles.transferSelectSubtitle}>{agent.model || 'gpt-4'}</Text>
+                      </View>
+                      {selectedAgentId === agent.id_ai_agent && <Text style={styles.checkMark}>✓</Text>}
+                    </TouchableOpacity>
+                  ))}
+                  
+                  <Text style={[styles.sectionLabel, { marginTop: 16 }]}>O que o agente deve fazer?</Text>
+                  <TouchableOpacity
+                    style={[styles.behaviorOption, agentBehavior === 'greeting' && styles.behaviorOptionSelected]}
+                    onPress={() => setAgentBehavior('greeting')}
+                  >
+                    <View style={[styles.radioCircle, agentBehavior === 'greeting' && styles.radioCircleSelected]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.behaviorTitle}>Enviar saudação</Text>
+                      <Text style={styles.behaviorSubtitle}>O agente envia a mensagem de boas-vindas</Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.behaviorOption, agentBehavior === 'respond' && styles.behaviorOptionSelected]}
+                    onPress={() => setAgentBehavior('respond')}
+                  >
+                    <View style={[styles.radioCircle, agentBehavior === 'respond' && styles.radioCircleSelected]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.behaviorTitle}>Responder última mensagem</Text>
+                      <Text style={styles.behaviorSubtitle}>O agente processa e responde a última mensagem</Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.behaviorOption, agentBehavior === 'wait' && styles.behaviorOptionSelected]}
+                    onPress={() => setAgentBehavior('wait')}
+                  >
+                    <View style={[styles.radioCircle, agentBehavior === 'wait' && styles.radioCircleSelected]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.behaviorTitle}>Apenas atribuir</Text>
+                      <Text style={styles.behaviorSubtitle}>Aguarda a próxima mensagem do cliente</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+              
+              {/* User Selection */}
+              {transferType === 'user' && (
+                <View style={styles.transferSection}>
+                  <Text style={styles.sectionLabel}>Selecione o atendente:</Text>
+                  {users.length === 0 ? (
+                    <Text style={styles.emptyText}>Nenhum atendente disponível</Text>
+                  ) : (
+                    users.map((user) => (
+                      <TouchableOpacity
+                        key={user.id_app_user}
+                        style={[styles.transferSelectItem, selectedUserId === user.id_app_user && styles.transferSelectItemSelected]}
+                        onPress={() => setSelectedUserId(user.id_app_user)}
+                      >
+                        <Text style={styles.transferSelectIcon}>👤</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.transferSelectTitle}>{user.full_name}</Text>
+                          <Text style={styles.transferSelectSubtitle}>{user.email}</Text>
+                        </View>
+                        {selectedUserId === user.id_app_user && <Text style={styles.checkMark}>✓</Text>}
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              )}
+              
+              {/* Role Selection */}
+              {transferType === 'role' && (
+                <View style={styles.transferSection}>
+                  <Text style={styles.sectionLabel}>Selecione o departamento:</Text>
+                  {roles.length === 0 ? (
+                    <Text style={styles.emptyText}>Nenhum departamento disponível</Text>
+                  ) : (
+                    roles.map((role) => (
+                      <TouchableOpacity
+                        key={role.role}
+                        style={[styles.transferSelectItem, selectedRole === role.role && styles.transferSelectItemSelected]}
+                        onPress={() => setSelectedRole(role.role)}
+                      >
+                        <Text style={styles.transferSelectIcon}>👥</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.transferSelectTitle}>{role.role}</Text>
+                          <Text style={styles.transferSelectSubtitle}>{role.count} pessoas</Text>
+                        </View>
+                        {selectedRole === role.role && <Text style={styles.checkMark}>✓</Text>}
+                      </TouchableOpacity>
+                    ))
+                  )}
+                  
+                  <Text style={[styles.sectionLabel, { marginTop: 16 }]}>Prioridade:</Text>
+                  <View style={styles.priorityGrid}>
+                    {(['low', 'normal', 'high', 'urgent'] as const).map((p) => (
+                      <TouchableOpacity
+                        key={p}
+                        style={[styles.priorityOption, transferPriority === p && styles.priorityOptionSelected]}
+                        onPress={() => setTransferPriority(p)}
+                      >
+                        <Text style={styles.priorityText}>
+                          {p === 'low' ? '⚪ Baixa' : p === 'normal' ? '🔵 Normal' : p === 'high' ? '🟠 Alta' : '🔴 Urgente'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+              
+              {/* Queue Info */}
+              {transferType === 'queue' && (
+                <View style={styles.transferSection}>
+                  <View style={styles.infoBox}>
+                    <Text style={styles.infoText}>
+                      A conversa entrará na fila geral e poderá ser assumida por qualquer atendente disponível.
+                    </Text>
+                  </View>
+                  
+                  <Text style={[styles.sectionLabel, { marginTop: 16 }]}>Prioridade:</Text>
+                  <View style={styles.priorityGrid}>
+                    {(['low', 'normal', 'high', 'urgent'] as const).map((p) => (
+                      <TouchableOpacity
+                        key={p}
+                        style={[styles.priorityOption, transferPriority === p && styles.priorityOptionSelected]}
+                        onPress={() => setTransferPriority(p)}
+                      >
+                        <Text style={styles.priorityText}>
+                          {p === 'low' ? '⚪ Baixa' : p === 'normal' ? '🔵 Normal' : p === 'high' ? '🟠 Alta' : '🔴 Urgente'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+              
+              {/* Stage Selection */}
+              {transferType === 'stage' && (
+                <View style={styles.transferSection}>
+                  <Text style={styles.sectionLabel}>Selecione o funil:</Text>
+                  {funnels.map((funnel) => {
+                    const funnelId = funnel.id_pipeline || funnel.id_funnel || '';
+                    return (
+                      <TouchableOpacity
+                        key={funnelId}
+                        style={[styles.transferSelectItem, selectedFunnelId === funnelId && styles.transferSelectItemSelected]}
+                        onPress={() => {
+                          setSelectedFunnelId(funnelId);
+                          setSelectedStageId(null);
+                          loadFunnelStages(funnelId);
+                        }}
+                      >
+                        <Text style={styles.transferSelectIcon}>📊</Text>
+                        <Text style={[styles.transferSelectTitle, { flex: 1 }]}>{funnel.name}</Text>
+                        {selectedFunnelId === funnelId && <Text style={styles.checkMark}>✓</Text>}
+                      </TouchableOpacity>
+                    );
+                  })}
+                  
+                  {selectedFunnelId && (
+                    <>
+                      <Text style={[styles.sectionLabel, { marginTop: 16 }]}>Selecione a etapa:</Text>
+                      {transferFunnelStages.map((stage) => {
+                        const stageId = stage.id_stage || stage.id_funnel_stage || '';
+                        return (
+                          <TouchableOpacity
+                            key={stageId}
+                            style={[styles.transferSelectItem, selectedStageId === stageId && styles.transferSelectItemSelected]}
+                            onPress={() => setSelectedStageId(stageId)}
+                          >
+                            <View style={[styles.stageDot, { backgroundColor: stage.color || '#10B981' }]} />
+                            <Text style={[styles.transferSelectTitle, { flex: 1 }]}>{stage.name}</Text>
+                            {selectedStageId === stageId && <Text style={styles.checkMark}>✓</Text>}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </>
+                  )}
+                  
+                  <View style={[styles.infoBox, { marginTop: 16, backgroundColor: '#FEF3C7' }]}>
+                    <Text style={[styles.infoText, { color: '#92400E' }]}>
+                      A conversa será movida para a etapa selecionada e os workflows de entrada serão acionados.
+                    </Text>
+                  </View>
+                </View>
+              )}
+              
+              {/* Context Summary (for non-agent transfers) */}
+              {transferType !== 'agent' && transferType !== 'stage' && (
+                <View style={styles.transferSection}>
+                  <Text style={styles.sectionLabel}>Contexto (opcional):</Text>
+                  <TextInput
+                    style={styles.contextInput}
+                    value={transferContext}
+                    onChangeText={setTransferContext}
+                    placeholder="Escreva um resumo do que foi conversado..."
+                    multiline
+                    numberOfLines={3}
+                    maxLength={500}
+                  />
+                </View>
+              )}
             </ScrollView>
             
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowTransfer(false)}>
-              <Text style={styles.cancelText}>Cancelar</Text>
-            </TouchableOpacity>
+            {/* Actions */}
+            <View style={styles.transferActions}>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setShowTransfer(false)}>
+                <Text style={styles.cancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.transferButton, isTransferring && styles.transferButtonDisabled]}
+                onPress={handleTransfer}
+                disabled={isTransferring}
+              >
+                {isTransferring ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.transferButtonText}>Transferir</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1915,7 +2285,7 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
   loadingMore: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8 },
   loadingMoreText: { fontSize: 13, color: '#666' },
-  emptyText: { fontSize: 16, color: '#666' },
+  emptyText: { fontSize: 14, color: '#999', textAlign: 'center', paddingVertical: 20 },
   
   // Quoted message
   quotedMessage: {
@@ -2173,6 +2543,12 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     maxHeight: '70%',
   },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   transferItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2183,7 +2559,7 @@ const styles = StyleSheet.create({
   transferIcon: { fontSize: 24, marginRight: 12 },
   transferTitle: { fontSize: 16, color: '#333', fontWeight: '500' },
   transferSubtitle: { fontSize: 13, color: '#666' },
-  sectionLabel: { fontSize: 12, color: '#666', marginTop: 16, marginBottom: 8, textTransform: 'uppercase' },
+  sectionLabel: { fontSize: 12, color: '#666', marginTop: 16, marginBottom: 8, textTransform: 'uppercase', fontWeight: '600' },
   agentsList: { maxHeight: 200 },
   stagesList: { maxHeight: 300 },
   stageItem: {
@@ -2199,6 +2575,137 @@ const styles = StyleSheet.create({
   stageDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   stageText: { fontSize: 16, color: '#333', flex: 1 },
   currentLabel: { fontSize: 12, color: '#25D366', fontWeight: '600' },
+  
+  // Transfer Modal - Complete
+  transferTypeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  transferTypeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
+  },
+  transferTypeSelected: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  transferTypeIcon: { fontSize: 16, marginRight: 6 },
+  transferTypeText: { fontSize: 13, color: '#666' },
+  transferTypeTextSelected: { color: '#10B981', fontWeight: '600' },
+  transferSection: { marginBottom: 16 },
+  transferSelectItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
+  transferSelectItemSelected: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  transferSelectIcon: { fontSize: 20, marginRight: 12 },
+  transferSelectTitle: { fontSize: 15, color: '#333', fontWeight: '500' },
+  transferSelectSubtitle: { fontSize: 12, color: '#666' },
+  checkMark: { fontSize: 18, color: '#10B981', fontWeight: '700' },
+  behaviorOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
+  behaviorOptionSelected: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    marginRight: 12,
+  },
+  radioCircleSelected: {
+    borderColor: '#10B981',
+    backgroundColor: '#10B981',
+  },
+  behaviorTitle: { fontSize: 14, color: '#333', fontWeight: '500' },
+  behaviorSubtitle: { fontSize: 12, color: '#666' },
+  priorityGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  priorityOption: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
+  },
+  priorityOptionSelected: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  priorityText: { fontSize: 13, color: '#333' },
+  infoBox: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+  },
+  infoText: { fontSize: 13, color: '#1E40AF', lineHeight: 18 },
+  contextInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: '#333',
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  transferActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  transferButton: {
+    flex: 1,
+    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  transferButtonDisabled: {
+    opacity: 0.6,
+  },
+  transferButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   
   // Tags modal
   tagsList: { maxHeight: 300 },

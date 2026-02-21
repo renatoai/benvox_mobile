@@ -1570,15 +1570,7 @@ export function ChatScreen() {
       {/* Input - WhatsApp style */}
       {!isRecording && (
         <View style={styles.inputContainer}>
-          {/* Attachment button */}
-          <TouchableOpacity 
-            style={styles.attachButton} 
-            onPress={() => setShowAttachments(true)}
-          >
-            <Text style={styles.attachIcon}>+</Text>
-          </TouchableOpacity>
-          
-          {/* Input field with emoji inside */}
+          {/* Input field wrapper */}
           <View style={styles.inputWrapper}>
             <TouchableOpacity 
               style={styles.emojiButton} 
@@ -1597,7 +1589,13 @@ export function ChatScreen() {
               maxLength={4096}
             />
             
-            {/* Camera icon inside input */}
+            <TouchableOpacity 
+              style={styles.attachButton} 
+              onPress={() => setShowAttachments(true)}
+            >
+              <Text style={styles.attachIcon}>📎</Text>
+            </TouchableOpacity>
+            
             <TouchableOpacity style={styles.cameraButton} onPress={pickImage}>
               <Text style={styles.cameraIcon}>📷</Text>
             </TouchableOpacity>
@@ -1605,7 +1603,7 @@ export function ChatScreen() {
           
           {/* Send/Mic button */}
           <TouchableOpacity
-            style={[styles.sendButton, inputText.trim() && styles.sendButtonActive]}
+            style={styles.sendButton}
             onPress={() => inputText.trim() ? handleSend(undefined, replyingTo?.id_message) : startRecording()}
             disabled={isSending}
           >
@@ -2451,64 +2449,63 @@ const styles = StyleSheet.create({
   // Input - WhatsApp style
   inputContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    paddingBottom: Platform.OS === 'ios' ? 26 : 6,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 8,
     backgroundColor: '#f0f2f5',
     alignItems: 'flex-end',
-    gap: 6,
+    gap: 8,
   },
-  attachButton: { 
-    width: 44, 
-    height: 44, 
-    justifyContent: 'center', 
-    alignItems: 'center',
-  },
-  attachIcon: { fontSize: 28, color: '#54656f', fontWeight: '300' },
   inputWrapper: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-end',
     backgroundColor: '#ffffff',
-    borderRadius: 24,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    minHeight: 48,
+    borderRadius: 25,
+    paddingHorizontal: 6,
+    minHeight: 50,
   },
   emojiButton: { 
-    width: 40, 
-    height: 40, 
+    width: 38, 
+    height: 50, 
     justifyContent: 'center', 
     alignItems: 'center',
   },
-  emojiIcon: { fontSize: 24 },
+  emojiIcon: { fontSize: 26 },
   input: {
     flex: 1,
     paddingHorizontal: 4,
-    paddingVertical: 8,
-    maxHeight: 100,
-    fontSize: 16,
+    paddingVertical: 12,
+    maxHeight: 120,
+    fontSize: 17,
     color: '#111b21',
     backgroundColor: 'transparent',
   },
+  attachButton: { 
+    width: 38, 
+    height: 50, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+  },
+  attachIcon: { fontSize: 24, color: '#54656f' },
   cameraButton: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cameraIcon: { fontSize: 22, color: '#54656f' },
+  cameraIcon: { fontSize: 24, color: '#54656f' },
   sendButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#00a884', // WhatsApp teal
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#00a884',
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonActive: { backgroundColor: '#00a884' },
-  sendButtonText: { color: '#ffffff', fontSize: 20 },
-  micIcon: { fontSize: 24, color: '#ffffff' },
+  sendButtonText: { color: '#ffffff', fontSize: 22 },
+  micIcon: { fontSize: 26, color: '#ffffff' },
   
   // Emoji picker
   emojiPickerContainer: {

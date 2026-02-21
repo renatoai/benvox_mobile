@@ -358,8 +358,11 @@ export function ChatScreen() {
         channelId,
         quoteMessageId
       );
+      // Replace temp with real message, keeping temp data as fallback
       setMessages(prev => 
-        prev.map(m => m.id_message === tempMessage.id_message ? { ...newMessage, status: 'sent' } : m)
+        prev.map(m => m.id_message === tempMessage.id_message 
+          ? { ...tempMessage, ...newMessage, status: newMessage.status || 'sent' } 
+          : m)
       );
     } catch (error: any) {
       setMessages(prev => prev.filter(m => m.id_message !== tempMessage.id_message));
@@ -374,6 +377,23 @@ export function ChatScreen() {
     if (!conversation) return;
     
     setIsSending(true);
+    
+    // Optimistic update - show media immediately with pending status
+    const tempId = `temp-media-${Date.now()}`;
+    const tempMessage: Message = {
+      id_message: tempId,
+      conversation_id: conversationId,
+      text_body: caption || '',
+      caption: caption || '',
+      from_me: true,
+      sender_type: 'user',
+      message_type: type,
+      media_url: uri, // Local URI for preview
+      created_at: new Date().toISOString(),
+      status: 'pending',
+    };
+    
+    setMessages(prev => [...prev, tempMessage]);
     
     try {
       const formData = new FormData();
@@ -401,10 +421,16 @@ export function ChatScreen() {
       formData.append('media_type', type);
       if (caption) formData.append('caption', caption);
       
-      await messagesService.sendMedia(formData);
-      await loadMessages();
+      const newMessage = await messagesService.sendMedia(formData);
+      
+      // Replace temp message with real one
+      setMessages(prev => 
+        prev.map(m => m.id_message === tempId ? { ...newMessage, status: 'sent' } : m)
+      );
       
     } catch (error: any) {
+      // Remove temp message on error
+      setMessages(prev => prev.filter(m => m.id_message !== tempId));
       Alert.alert('Erro', error.message || 'Não foi possível enviar mídia');
     } finally {
       setIsSending(false);

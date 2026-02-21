@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { ActivityIndicator } from 'react-native';
@@ -10,12 +10,18 @@ import {
   SettingsScreen,
   ChannelsScreen,
   ContactsScreen,
+  ContactDetailScreen,
+  NewContactScreen,
   FunnelsScreen,
   FunnelDetailScreen,
   AgentsScreen,
+  AgentDetailScreen,
+  NewAgentScreen,
   UsersScreen,
   TasksScreen,
+  NewTaskScreen,
   TagsScreen,
+  NewTagScreen,
   KnowledgeScreen,
 } from '../screens';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,6 +31,12 @@ export type RootStackParamList = {
   Main: undefined;
   Chat: { conversationId: string; contactName: string };
   FunnelDetail: { funnelId: string; name: string };
+  ContactDetail: { contactId: string };
+  NewContact: undefined;
+  AgentDetail: { agentId: string };
+  NewAgent: undefined;
+  NewTask: undefined;
+  NewTag: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -197,6 +209,36 @@ export function AppNavigator() {
             options={({ route }) => ({
               title: route.params?.name || 'Funil',
             })}
+          />
+          <Stack.Screen
+            name="ContactDetail"
+            component={ContactDetailScreen}
+            options={{ title: 'Contato' }}
+          />
+          <Stack.Screen
+            name="NewContact"
+            component={NewContactScreen}
+            options={{ title: 'Novo Contato' }}
+          />
+          <Stack.Screen
+            name="AgentDetail"
+            component={AgentDetailScreen}
+            options={{ title: 'Agente' }}
+          />
+          <Stack.Screen
+            name="NewAgent"
+            component={NewAgentScreen}
+            options={{ title: 'Novo Agente' }}
+          />
+          <Stack.Screen
+            name="NewTask"
+            component={NewTaskScreen}
+            options={{ title: 'Nova Tarefa' }}
+          />
+          <Stack.Screen
+            name="NewTag"
+            component={NewTagScreen}
+            options={{ title: 'Nova Tag' }}
           />
         </>
       )}

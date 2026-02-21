@@ -9,10 +9,12 @@ import {
   RefreshControl,
   Switch,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { agentsService } from '../services';
 import type { AiAgent } from '../types';
 
 export function AgentsScreen() {
+  const navigation = useNavigation<any>();
   const [agents, setAgents] = useState<AiAgent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -33,6 +35,11 @@ export function AgentsScreen() {
     loadAgents();
   }, [loadAgents]);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', loadAgents);
+    return unsubscribe;
+  }, [navigation, loadAgents]);
+
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
     loadAgents();
@@ -50,7 +57,10 @@ export function AgentsScreen() {
   };
 
   const renderItem = ({ item }: { item: AiAgent }) => (
-    <TouchableOpacity style={styles.item}>
+    <TouchableOpacity 
+      style={styles.item}
+      onPress={() => navigation.navigate('AgentDetail', { agentId: item.id_ai_agent })}
+    >
       <View style={styles.itemIcon}>
         <Text style={styles.iconText}>🤖</Text>
       </View>
@@ -98,6 +108,12 @@ export function AgentsScreen() {
         }
         contentContainerStyle={agents.length === 0 ? styles.emptyList : undefined}
       />
+      <TouchableOpacity 
+        style={styles.fab}
+        onPress={() => navigation.navigate('NewAgent')}
+      >
+        <Text style={styles.fabIcon}>+</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -146,4 +162,21 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 64, marginBottom: 16 },
   emptyText: { fontSize: 18, fontWeight: '600', color: '#333' },
   emptySubtext: { fontSize: 14, color: '#666', marginTop: 8, textAlign: 'center', paddingHorizontal: 32 },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#25D366',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  fabIcon: { color: '#fff', fontSize: 28, fontWeight: '300' },
 });

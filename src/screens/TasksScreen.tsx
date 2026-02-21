@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { tasksService } from '../services';
 import type { Task } from '../types';
 
 export function TasksScreen() {
+  const navigation = useNavigation<any>();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -33,6 +35,11 @@ export function TasksScreen() {
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', loadTasks);
+    return unsubscribe;
+  }, [navigation, loadTasks]);
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -137,6 +144,12 @@ export function TasksScreen() {
           </View>
         }
       />
+      <TouchableOpacity 
+        style={styles.fab}
+        onPress={() => navigation.navigate('NewTask')}
+      >
+        <Text style={styles.fabIcon}>+</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -196,4 +209,21 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
   emptyIcon: { fontSize: 64, marginBottom: 16 },
   emptyText: { fontSize: 18, fontWeight: '600', color: '#333' },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#25D366',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  fabIcon: { color: '#fff', fontSize: 28, fontWeight: '300' },
 });

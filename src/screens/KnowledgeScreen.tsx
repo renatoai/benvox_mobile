@@ -7,14 +7,25 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  TextInput,
+  Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { knowledgeService } from '../services';
 import type { KnowledgeBase } from '../types';
 
 export function KnowledgeScreen() {
+  const navigation = useNavigation<any>();
   const [bases, setBases] = useState<KnowledgeBase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Create modal
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   const loadBases = useCallback(async () => {
     try {
@@ -37,8 +48,35 @@ export function KnowledgeScreen() {
     loadBases();
   }, [loadBases]);
 
+  const handleCreate = async () => {
+    if (!newName.trim()) {
+      Alert.alert('Erro', 'Digite um nome para a base');
+      return;
+    }
+    
+    setIsCreating(true);
+    try {
+      await knowledgeService.create({ name: newName.trim(), description: newDesc.trim() || undefined });
+      setShowCreate(false);
+      setNewName('');
+      setNewDesc('');
+      loadBases();
+      Alert.alert('Sucesso', 'Base de conhecimento criada!');
+    } catch (error: any) {
+      Alert.alert('Erro', error.message || 'Não foi possível criar');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const renderItem = ({ item }: { item: KnowledgeBase }) => (
-    <TouchableOpacity style={styles.item}>
+    <TouchableOpacity 
+      style={styles.item}
+      onPress={() => navigation.navigate('KnowledgeDetail', { 
+        baseId: item.id_knowledge_base, 
+        name: item.name 
+      })}
+    >
       <View style={styles.itemIcon}>
         <Text style={styles.iconText}>📚</Text>
       </View>
@@ -79,8 +117,57 @@ export function KnowledgeScreen() {
             <Text style={styles.emptySubtext}>Crie bases para treinar seus agentes</Text>
           </View>
         }
-        contentContainerStyle={bases.length === 0 ? styles.emptyList : undefined}
+        contentContainerStyle={bases.length === 0 ? styles.emptyList : { paddingBottom: 100 }}
       />
+
+      {/* FAB */}
+      <TouchableOpacity style={styles.fab} onPress={() => setShowCreate(true)}>
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+
+      {/* Create Modal */}
+      <Modal visible={showCreate} transparent animationType="slide" onRequestClose={() => setShowCreate(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Nova Base de Conhecimento</Text>
+            
+            <TextInput
+              style={styles.modalInput}
+              value={newName}
+              onChangeText={setNewName}
+              placeholder="Nome da base"
+              placeholderTextColor="#999"
+            />
+            
+            <TextInput
+              style={[styles.modalInput, styles.modalTextarea]}
+              value={newDesc}
+              onChangeText={setNewDesc}
+              placeholder="Descrição (opcional)"
+              placeholderTextColor="#999"
+              multiline
+              textAlignVertical="top"
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowCreate(false)}>
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalSaveBtn, isCreating && styles.modalSaveBtnDisabled]} 
+                onPress={handleCreate}
+                disabled={isCreating}
+              >
+                {isCreating ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalSaveText}>Criar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -122,4 +209,65 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 64, marginBottom: 16 },
   emptyText: { fontSize: 18, fontWeight: '600', color: '#333' },
   emptySubtext: { fontSize: 14, color: '#666', marginTop: 8, textAlign: 'center', paddingHorizontal: 32 },
+  
+  // FAB
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#25D366',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  fabText: { fontSize: 28, color: '#fff', fontWeight: '300' },
+  
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 16, textAlign: 'center' },
+  modalInput: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    marginBottom: 12,
+  },
+  modalTextarea: { height: 80, textAlignVertical: 'top' },
+  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+  },
+  modalCancelText: { fontSize: 16, color: '#666', fontWeight: '600' },
+  modalSaveBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: '#25D366',
+    borderRadius: 12,
+  },
+  modalSaveBtnDisabled: { backgroundColor: '#ccc' },
+  modalSaveText: { fontSize: 16, color: '#fff', fontWeight: '600' },
 });

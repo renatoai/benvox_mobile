@@ -26,6 +26,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { conversationsService, contactsService, funnelsService, agentsService, tagsService, messagesService } from '../services';
 import type { Message, Conversation, AiAgent, Tag, FunnelStage } from '../types';
+import { useMessageSSE } from '../hooks/useMessageSSE';
 
 type RootStackParamList = {
   Chat: { conversationId: string; contactName: string };
@@ -89,6 +90,12 @@ export function ChatScreen() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [showMessageActions, setShowMessageActions] = useState(false);
 
+  // Search state
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Message[]>([]);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+
   const loadConversation = useCallback(async () => {
     try {
       const conv = await conversationsService.getById(conversationId);
@@ -128,14 +135,58 @@ export function ChatScreen() {
     }
   }, []);
 
+  // SSE connection indicator
+  const [sseConnected, setSseConnected] = useState(false);
+
+  // SSE for real-time updates
+  const { isConnected: sseIsConnected } = useMessageSSE(conversationId, {
+    onStatusUpdate: (event) => {
+      // Update message status in local state
+      setMessages(prev => prev.map(msg => {
+        if (msg.id_message === event.id_message || msg.external_message_id === event.id_message) {
+          return {
+            ...msg,
+            status: event.status as any,
+            delivered_at: event.delivered_at,
+            read_at: event.read_at,
+            error_reason: event.error_details,
+          };
+        }
+        return msg;
+      }));
+    },
+    onNewMessage: (event) => {
+      // New message received - reload messages
+      loadMessages();
+      conversationsService.markAsRead(conversationId).catch(console.error);
+    },
+    onMessageUpdated: (event) => {
+      // Message updated (e.g., transcription) - reload messages
+      loadMessages();
+    },
+    onConnected: () => {
+      console.log('[Chat] SSE connected');
+      setSseConnected(true);
+    },
+    onDisconnected: () => {
+      console.log('[Chat] SSE disconnected');
+      setSseConnected(false);
+    },
+  });
+
   useEffect(() => {
     loadConversation();
     loadMessages();
     loadTags();
     conversationsService.markAsRead(conversationId).catch(console.error);
     
-    // Poll for new messages (TODO: Replace with SSE)
-    const interval = setInterval(loadMessages, 5000);
+    // Fallback polling when SSE is not connected (every 10s instead of 5s)
+    const interval = setInterval(() => {
+      if (!sseConnected) {
+        loadMessages();
+      }
+    }, 10000);
+    
     return () => {
       clearInterval(interval);
       if (soundRef.current) {
@@ -145,7 +196,7 @@ export function ChatScreen() {
         clearInterval(recordingTimer.current);
       }
     };
-  }, [conversationId, loadConversation, loadMessages, loadTags]);
+  }, [conversationId, loadConversation, loadMessages, loadTags, sseConnected]);
 
   // Check for shortcut trigger
   useEffect(() => {
@@ -822,11 +873,57 @@ export function ChatScreen() {
     setSelectedMessage(null);
   };
 
+  // ============ SEARCH ============
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      setHighlightedMessageId(null);
+      return;
+    }
+    
+    const lowerQuery = query.toLowerCase();
+    const results = messages.filter(msg => {
+      const text = msg.text_body || msg.caption || '';
+      return text.toLowerCase().includes(lowerQuery);
+    });
+    setSearchResults(results);
+  }, [messages]);
+
+  const scrollToMessage = useCallback((messageId: string) => {
+    const index = messages.findIndex(m => m.id_message === messageId);
+    if (index !== -1 && flatListRef.current) {
+      flatListRef.current.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+      setHighlightedMessageId(messageId);
+      // Clear highlight after 2 seconds
+      setTimeout(() => setHighlightedMessageId(null), 2000);
+    }
+  }, [messages]);
+
+  const navigateSearchResults = (direction: 'prev' | 'next') => {
+    if (searchResults.length === 0) return;
+    
+    const currentIndex = highlightedMessageId 
+      ? searchResults.findIndex(m => m.id_message === highlightedMessageId)
+      : -1;
+    
+    let newIndex: number;
+    if (direction === 'next') {
+      newIndex = currentIndex + 1 >= searchResults.length ? 0 : currentIndex + 1;
+    } else {
+      newIndex = currentIndex - 1 < 0 ? searchResults.length - 1 : currentIndex - 1;
+    }
+    
+    scrollToMessage(searchResults[newIndex].id_message);
+  };
+
   // ============ RENDER MESSAGE ============
   const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.from_me || item.direction === 'outbound';
     const mediaUrl = getMediaUrl(item);
     const isFailed = item.status === 'failed' || item.status === 'cancelled';
+    
+    const isHighlighted = item.id_message === highlightedMessageId;
     
     return (
       <Pressable 
@@ -834,7 +931,8 @@ export function ChatScreen() {
         style={[
           styles.messageContainer, 
           isMe ? styles.myMessage : styles.theirMessage,
-          isFailed && styles.failedMessage
+          isFailed && styles.failedMessage,
+          isHighlighted && styles.highlightedMessage
         ]}
       >
         {/* Sender name */}
@@ -1142,6 +1240,9 @@ export function ChatScreen() {
       {/* Header Info Bar */}
       <View style={styles.infoBar}>
         <View style={styles.infoContent}>
+          {/* Connection indicator */}
+          <View style={[styles.connectionDot, sseConnected ? styles.connectionOnline : styles.connectionOffline]} />
+          
           {conversation?.assigned_to_agent_name && (
             <View style={styles.agentBadge}>
               <Text style={styles.agentBadgeText}>🤖 {conversation.assigned_to_agent_name}</Text>
@@ -1162,10 +1263,46 @@ export function ChatScreen() {
             ))}
           </ScrollView>
         </View>
+        <TouchableOpacity style={styles.searchButton} onPress={() => setShowSearch(!showSearch)}>
+          <Text style={styles.searchIcon}>🔍</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.actionsButton} onPress={() => setShowActions(true)}>
           <Text style={styles.actionsIcon}>⋯</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Search Bar */}
+      {showSearch && (
+        <View style={styles.searchBar}>
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={handleSearch}
+            placeholder="Buscar mensagens..."
+            placeholderTextColor="#999"
+            autoFocus
+          />
+          {searchResults.length > 0 && (
+            <View style={styles.searchNav}>
+              <Text style={styles.searchCount}>
+                {highlightedMessageId 
+                  ? `${searchResults.findIndex(m => m.id_message === highlightedMessageId) + 1}/${searchResults.length}`
+                  : `${searchResults.length} resultados`
+                }
+              </Text>
+              <TouchableOpacity onPress={() => navigateSearchResults('prev')} style={styles.searchNavBtn}>
+                <Text style={styles.searchNavIcon}>▲</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigateSearchResults('next')} style={styles.searchNavBtn}>
+                <Text style={styles.searchNavIcon}>▼</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <TouchableOpacity onPress={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }}>
+            <Text style={styles.searchClose}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Messages */}
       <View style={styles.chatBackground}>
@@ -1429,6 +1566,21 @@ export function ChatScreen() {
               <Text style={styles.actionText}>Ver Contato</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity style={[styles.actionItem, styles.assistantItem]} onPress={() => {
+              setShowActions(false);
+              if (conversation) {
+                navigation.navigate('Assistant', { 
+                  conversationId: conversation.id_conversation,
+                  contactName: conversation.contact_name || '',
+                  contactPhone: conversation.contact_phone || '',
+                  channelId: conversation.id_channel,
+                });
+              }
+            }}>
+              <Text style={styles.actionIcon}>🤖</Text>
+              <Text style={[styles.actionText, styles.assistantText]}>Assistente IA</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={[styles.actionItem, styles.dangerItem]} onPress={handleDelete}>
               <Text style={styles.actionIcon}>🗑️</Text>
               <Text style={[styles.actionText, styles.dangerText]}>Excluir Conversa</Text>
@@ -1576,6 +1728,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  connectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  connectionOnline: {
+    backgroundColor: '#25D366',
+  },
+  connectionOffline: {
+    backgroundColor: '#f59e0b',
+  },
   infoContent: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   agentBadge: {
     backgroundColor: '#e3f2fd',
@@ -1600,6 +1764,54 @@ const styles = StyleSheet.create({
   tagText: { fontSize: 11, fontWeight: '600' },
   actionsButton: { padding: 8 },
   actionsIcon: { fontSize: 24, color: '#666' },
+  searchButton: { padding: 8 },
+  searchIcon: { fontSize: 18 },
+  
+  // Search bar
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    fontSize: 14,
+    marginRight: 8,
+  },
+  searchNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchCount: {
+    fontSize: 12,
+    color: '#666',
+    marginRight: 8,
+  },
+  searchNavBtn: {
+    padding: 4,
+  },
+  searchNavIcon: {
+    fontSize: 14,
+    color: '#666',
+  },
+  searchClose: {
+    fontSize: 18,
+    color: '#999',
+    padding: 4,
+  },
+  highlightedMessage: {
+    backgroundColor: '#fef08a',
+    borderColor: '#facc15',
+    borderWidth: 2,
+  },
   
   // Chat
   chatBackground: { flex: 1 },
@@ -1875,6 +2087,8 @@ const styles = StyleSheet.create({
   },
   dangerItem: { borderBottomWidth: 0 },
   dangerText: { color: '#ef4444' },
+  assistantItem: { backgroundColor: '#faf5ff' },
+  assistantText: { color: '#8b5cf6', fontWeight: '600' },
   actionIcon: { fontSize: 20, marginRight: 12, width: 30 },
   actionText: { fontSize: 16, color: '#333' },
   cancelButton: {

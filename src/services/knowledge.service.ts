@@ -38,9 +38,25 @@ export const knowledgeService = {
     return Array.isArray(response.data) ? response.data : (response.data as any).data || [];
   },
 
-  async uploadDocument(baseId: string, formData: FormData): Promise<KnowledgeDocument> {
+  async uploadDocument(baseId: string, file: { uri: string; name: string; type: string }): Promise<KnowledgeDocument> {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: file.uri,
+      name: file.name,
+      type: file.type,
+    } as any);
+    
     const response = await api.post<KnowledgeDocument>(`/knowledge/bases/${baseId}/documents/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  async addTextDocument(baseId: string, title: string, content: string): Promise<KnowledgeDocument> {
+    const response = await api.post<KnowledgeDocument>(`/knowledge/bases/${baseId}/documents`, {
+      title,
+      content,
+      content_type: 'text',
     });
     return response.data;
   },

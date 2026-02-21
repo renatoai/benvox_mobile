@@ -23,6 +23,8 @@ import {
   TagsScreen,
   NewTagScreen,
   KnowledgeScreen,
+  KnowledgeDetailScreen,
+  AssistantScreen,
 } from '../screens';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -30,6 +32,7 @@ export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
   Chat: { conversationId: string; contactName: string };
+  Assistant: { conversationId: string; contactName: string; contactPhone: string; channelId: string };
   FunnelDetail: { funnelId: string; name: string };
   ContactDetail: { contactId: string };
   NewContact: undefined;
@@ -37,6 +40,7 @@ export type RootStackParamList = {
   NewAgent: undefined;
   NewTask: undefined;
   NewTag: undefined;
+  KnowledgeDetail: { baseId: string; name: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -204,6 +208,14 @@ export function AppNavigator() {
             })}
           />
           <Stack.Screen
+            name="Assistant"
+            component={AssistantScreen}
+            options={{
+              title: 'Assistente IA',
+              headerStyle: { backgroundColor: '#8b5cf6' },
+            }}
+          />
+          <Stack.Screen
             name="FunnelDetail"
             component={FunnelDetailScreen}
             options={({ route }) => ({
@@ -239,6 +251,13 @@ export function AppNavigator() {
             name="NewTag"
             component={NewTagScreen}
             options={{ title: 'Nova Tag' }}
+          />
+          <Stack.Screen
+            name="KnowledgeDetail"
+            component={KnowledgeDetailScreen}
+            options={({ route }) => ({
+              title: route.params?.name || 'Base de Conhecimento',
+            })}
           />
         </>
       )}

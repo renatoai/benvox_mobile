@@ -17,3 +17,5 @@ export { NewTaskScreen } from './NewTaskScreen';
 export { TagsScreen } from './TagsScreen';
 export { NewTagScreen } from './NewTagScreen';
 export { KnowledgeScreen } from './KnowledgeScreen';
+export { KnowledgeDetailScreen } from './KnowledgeDetailScreen';
+export { AssistantScreen } from './AssistantScreen';

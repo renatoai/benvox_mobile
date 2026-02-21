@@ -116,13 +116,21 @@ export function ChatScreen() {
     setMessages(prev => [...prev, tempMessage]);
     
     try {
-      const newMessage = await conversationsService.sendMessage(conversationId, text);
+      // Get phone and channel from conversation
+      const phone = conversation?.contact_phone;
+      const channelId = conversation?.id_channel;
+      
+      if (!phone) {
+        throw new Error('Telefone do contato não encontrado');
+      }
+      
+      const newMessage = await conversationsService.sendMessage(conversationId, text, phone, channelId);
       setMessages(prev => 
         prev.map(m => m.id_message === tempMessage.id_message ? { ...newMessage, status: 'sent' } : m)
       );
     } catch (error: any) {
       setMessages(prev => prev.filter(m => m.id_message !== tempMessage.id_message));
-      Alert.alert('Erro', error.response?.data?.message || 'Não foi possível enviar');
+      Alert.alert('Erro', error.response?.data?.message || error.message || 'Não foi possível enviar');
     } finally {
       setIsSending(false);
     }

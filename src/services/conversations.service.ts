@@ -29,22 +29,48 @@ export const conversationsService = {
     const response = await api.get<PaginatedResponse<Message> | Message[]>(`/messages/conversation/${conversationId}`, {
       params: { limit, offset },
     });
-    return Array.isArray(response.data) ? response.data : (response.data as any).data || [];
+    // Messages endpoint returns { data: [...], total, ... }
+    if (Array.isArray(response.data)) return response.data;
+    if ((response.data as any).data) return (response.data as any).data;
+    // If it's an object with messages
+    return [];
   },
 
-  async sendMessage(conversationId: string, text: string): Promise<Message> {
+  async sendMessage(conversationId: string, text: string, toPhone?: string, channelId?: string): Promise<Message> {
+    // First, get conversation details to get phone and channel
+    let phone = toPhone;
+    let channel = channelId;
+    
+    if (!phone || !channel) {
+      try {
+        const conv = await this.getById(conversationId);
+        phone = phone || conv.contact_phone;
+        channel = channel || conv.id_channel;
+      } catch (e) {
+        console.error('Error getting conversation details:', e);
+      }
+    }
+    
+    if (!phone) {
+      throw new Error('Phone number is required to send message');
+    }
+
     const response = await api.post<Message>('/messages/send/text', {
-      conversation_id: conversationId,
       text,
+      to_identifier: phone,
+      id_channel: channel,
+      id_conversation: conversationId,
     });
     return response.data;
   },
 
-  async sendMedia(conversationId: string, mediaUrl: string, mediaType: string, caption?: string): Promise<Message> {
+  async sendMedia(conversationId: string, mediaUrl: string, mediaType: string, toPhone: string, channelId: string, caption?: string): Promise<Message> {
     const response = await api.post<Message>('/messages/send/media', {
-      conversation_id: conversationId,
       media_url: mediaUrl,
       media_type: mediaType,
+      to_identifier: toPhone,
+      id_channel: channelId,
+      id_conversation: conversationId,
       caption,
     });
     return response.data;

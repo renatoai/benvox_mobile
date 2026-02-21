@@ -1,6 +1,11 @@
 import api from './api';
 import type { Task } from '../types';
 
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+}
+
 export const tasksService = {
   async getAll(params?: { 
     status?: string; 
@@ -8,8 +13,8 @@ export const tasksService = {
     contact_id?: string;
     assigned_to?: string;
   }): Promise<Task[]> {
-    const response = await api.get<Task[]>('/user-tasks', { params });
-    return response.data;
+    const response = await api.get<PaginatedResponse<Task> | Task[]>('/user-tasks', { params });
+    return Array.isArray(response.data) ? response.data : (response.data as any).data || [];
   },
 
   async getById(id: string): Promise<Task> {
@@ -18,8 +23,8 @@ export const tasksService = {
   },
 
   async getByContact(contactId: string): Promise<Task[]> {
-    const response = await api.get<Task[]>(`/user-tasks/contact/${contactId}`);
-    return response.data;
+    const response = await api.get<PaginatedResponse<Task> | Task[]>(`/user-tasks/contact/${contactId}`);
+    return Array.isArray(response.data) ? response.data : (response.data as any).data || [];
   },
 
   async create(data: Partial<Task>): Promise<Task> {

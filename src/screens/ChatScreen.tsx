@@ -9,10 +9,11 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
-import { conversationsService } from '../services/conversations.service';
+import { conversationsService } from '../services';
 import type { Message } from '../types';
 
 type RootStackParamList = {
@@ -34,7 +35,11 @@ export function ChatScreen() {
   const loadMessages = useCallback(async () => {
     try {
       const data = await conversationsService.getMessages(conversationId);
-      setMessages(data.reverse());
+      // Sort by date, oldest first
+      const sorted = data.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      setMessages(sorted);
     } catch (error) {
       console.error('Error loading messages:', error);
     } finally {
@@ -48,8 +53,8 @@ export function ChatScreen() {
     // Mark as read
     conversationsService.markAsRead(conversationId).catch(console.error);
     
-    // Poll for new messages every 3 seconds
-    const interval = setInterval(loadMessages, 3000);
+    // Poll for new messages every 5 seconds
+    const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
   }, [conversationId, loadMessages]);
 
@@ -77,12 +82,13 @@ export function ChatScreen() {
     try {
       const newMessage = await conversationsService.sendMessage(conversationId, text);
       setMessages(prev => 
-        prev.map(m => m.id_message === tempMessage.id_message ? newMessage : m)
+        prev.map(m => m.id_message === tempMessage.id_message ? { ...newMessage, status: 'sent' } : m)
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
       // Remove the temp message on error
       setMessages(prev => prev.filter(m => m.id_message !== tempMessage.id_message));
+      Alert.alert('Erro', error.response?.data?.message || 'Não foi possível enviar a mensagem');
     } finally {
       setIsSending(false);
     }
@@ -101,15 +107,28 @@ export function ChatScreen() {
         {!isMe && item.sender_display_name && (
           <Text style={styles.senderName}>{item.sender_display_name}</Text>
         )}
-        <Text style={[styles.messageText, isMe && styles.myMessageText]}>
-          {item.text_body}
-        </Text>
+        {item.message_type === 'text' || !item.message_type ? (
+          <Text style={[styles.messageText, isMe && styles.myMessageText]}>
+            {item.text_body || item.caption}
+          </Text>
+        ) : (
+          <View style={styles.mediaPlaceholder}>
+            <Text style={styles.mediaIcon}>
+              {item.message_type === 'image' ? '🖼️' : 
+               item.message_type === 'audio' ? '🎵' : 
+               item.message_type === 'video' ? '🎬' : 
+               item.message_type === 'document' ? '📄' : '📎'}
+            </Text>
+            <Text style={styles.mediaText}>{item.message_type}</Text>
+            {item.caption && <Text style={styles.captionText}>{item.caption}</Text>}
+          </View>
+        )}
         <View style={styles.messageFooter}>
           <Text style={[styles.timestamp, isMe && styles.myTimestamp]}>
             {formatTime(item.created_at)}
           </Text>
           {isMe && (
-            <Text style={styles.status}>
+            <Text style={[styles.status, item.status === 'read' && styles.statusRead]}>
               {item.status === 'read' ? '✓✓' : item.status === 'delivered' ? '✓✓' : item.status === 'sent' ? '✓' : '○'}
             </Text>
           )}
@@ -140,6 +159,7 @@ export function ChatScreen() {
           renderItem={renderMessage}
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+          onLayout={() => flatListRef.current?.scrollToEnd()}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>Sem mensagens</Text>
@@ -157,7 +177,7 @@ export function ChatScreen() {
           placeholder="Mensagem"
           placeholderTextColor="#999"
           multiline
-          maxLength={1000}
+          maxLength={4096}
         />
         <TouchableOpacity
           style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
@@ -167,7 +187,7 @@ export function ChatScreen() {
           {isSending ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.sendButtonText}>▶</Text>
+            <Text style={styles.sendButtonText}>➤</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -224,6 +244,24 @@ const styles = StyleSheet.create({
   myMessageText: {
     color: '#333',
   },
+  mediaPlaceholder: {
+    alignItems: 'center',
+    padding: 16,
+  },
+  mediaIcon: {
+    fontSize: 32,
+  },
+  mediaText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    textTransform: 'capitalize',
+  },
+  captionText: {
+    fontSize: 14,
+    color: '#333',
+    marginTop: 8,
+  },
   messageFooter: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -239,8 +277,11 @@ const styles = StyleSheet.create({
   },
   status: {
     fontSize: 12,
-    color: '#53bdeb',
+    color: '#999',
     marginLeft: 4,
+  },
+  statusRead: {
+    color: '#53bdeb',
   },
   emptyContainer: {
     flex: 1,

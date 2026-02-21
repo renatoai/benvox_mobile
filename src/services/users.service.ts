@@ -1,15 +1,25 @@
 import api from './api';
 import type { AppUser } from '../types';
 
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+}
+
 export const usersService = {
   async getAll(): Promise<AppUser[]> {
-    const response = await api.get<AppUser[]>('/users');
-    return response.data;
+    const response = await api.get<PaginatedResponse<AppUser> | AppUser[]>('/users');
+    return Array.isArray(response.data) ? response.data : (response.data as any).data || [];
   },
 
   async getById(id: string): Promise<AppUser> {
     const response = await api.get<AppUser>(`/users/${id}`);
     return response.data;
+  },
+
+  async getByRole(role: string): Promise<AppUser[]> {
+    const response = await api.get<PaginatedResponse<AppUser> | AppUser[]>(`/users/by-role/${role}`);
+    return Array.isArray(response.data) ? response.data : (response.data as any).data || [];
   },
 
   async create(data: Partial<AppUser> & { password: string }): Promise<AppUser> {
@@ -26,7 +36,21 @@ export const usersService = {
     await api.delete(`/users/${id}`);
   },
 
-  async changePassword(id: string, password: string): Promise<void> {
-    await api.patch(`/users/${id}/password`, { password });
+  async getAvailableRoles(): Promise<string[]> {
+    const response = await api.get('/users/roles/available');
+    return response.data;
+  },
+
+  async getUserRoles(userId: string): Promise<string[]> {
+    const response = await api.get(`/users/${userId}/roles`);
+    return response.data;
+  },
+
+  async addRole(userId: string, roleId: string): Promise<void> {
+    await api.post(`/users/${userId}/roles/add`, { roleId });
+  },
+
+  async removeRole(userId: string, roleId: string): Promise<void> {
+    await api.post(`/users/${userId}/roles/remove`, { roleId });
   },
 };

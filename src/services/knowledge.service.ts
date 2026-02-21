@@ -1,11 +1,16 @@
 import api from './api';
 import type { KnowledgeBase, KnowledgeDocument } from '../types';
 
+interface PaginatedResponse<T> {
+  data: T[];
+  total?: number;
+}
+
 export const knowledgeService = {
   // Knowledge Bases
   async getAll(): Promise<KnowledgeBase[]> {
-    const response = await api.get<KnowledgeBase[]>('/knowledge/bases');
-    return response.data;
+    const response = await api.get<PaginatedResponse<KnowledgeBase> | KnowledgeBase[]>('/knowledge/bases');
+    return Array.isArray(response.data) ? response.data : (response.data as any).data || [];
   },
 
   async getById(id: string): Promise<KnowledgeBase> {
@@ -29,8 +34,8 @@ export const knowledgeService = {
 
   // Documents
   async getDocuments(baseId: string): Promise<KnowledgeDocument[]> {
-    const response = await api.get<KnowledgeDocument[]>(`/knowledge/bases/${baseId}/documents`);
-    return response.data;
+    const response = await api.get<PaginatedResponse<KnowledgeDocument> | KnowledgeDocument[]>(`/knowledge/bases/${baseId}/documents`);
+    return Array.isArray(response.data) ? response.data : (response.data as any).data || [];
   },
 
   async uploadDocument(baseId: string, formData: FormData): Promise<KnowledgeDocument> {
@@ -55,7 +60,7 @@ export const knowledgeService = {
 
   // Agent knowledge bases
   async getAgentBases(agentId: string): Promise<KnowledgeBase[]> {
-    const response = await api.get<KnowledgeBase[]>(`/knowledge/agents/${agentId}/knowledge-bases`);
-    return response.data;
+    const response = await api.get<PaginatedResponse<KnowledgeBase> | KnowledgeBase[]>(`/knowledge/agents/${agentId}/knowledge-bases`);
+    return Array.isArray(response.data) ? response.data : (response.data as any).data || [];
   },
 };

@@ -12,7 +12,6 @@ interface PaginatedResponse<T> {
 export const conversationsService = {
   async getAll(params?: { limit?: number; cursor?: string }): Promise<Conversation[]> {
     const response = await api.get<PaginatedResponse<Conversation>>('/conversations', { params });
-    // Handle both { data: [...] } and [...] formats
     return Array.isArray(response.data) ? response.data : response.data.data || [];
   },
 
@@ -27,23 +26,32 @@ export const conversationsService = {
   },
 
   async getMessages(conversationId: string, limit = 50, offset = 0): Promise<Message[]> {
-    const response = await api.get<PaginatedResponse<Message>>(`/messages/conversation/${conversationId}`, {
+    const response = await api.get<PaginatedResponse<Message> | Message[]>(`/messages/conversation/${conversationId}`, {
       params: { limit, offset },
     });
-    return Array.isArray(response.data) ? response.data : response.data.data || [];
+    return Array.isArray(response.data) ? response.data : (response.data as any).data || [];
   },
 
   async sendMessage(conversationId: string, text: string): Promise<Message> {
-    const response = await api.post<Message>(`/messages/send`, {
+    const response = await api.post<Message>('/messages/send/text', {
       conversation_id: conversationId,
-      text_body: text,
-      message_type: 'text',
+      text,
+    });
+    return response.data;
+  },
+
+  async sendMedia(conversationId: string, mediaUrl: string, mediaType: string, caption?: string): Promise<Message> {
+    const response = await api.post<Message>('/messages/send/media', {
+      conversation_id: conversationId,
+      media_url: mediaUrl,
+      media_type: mediaType,
+      caption,
     });
     return response.data;
   },
 
   async markAsRead(conversationId: string): Promise<void> {
-    await api.post(`/conversations/${conversationId}/read`).catch(() => {});
+    await api.post(`/messages/conversation/${conversationId}/read`).catch(() => {});
   },
 
   async archive(conversationId: string): Promise<void> {
@@ -60,6 +68,14 @@ export const conversationsService = {
 
   async assignToMe(conversationId: string): Promise<void> {
     await api.post(`/conversations/${conversationId}/assign-to-me`);
+  },
+
+  async assign(conversationId: string, userId: string): Promise<void> {
+    await api.post(`/conversations/${conversationId}/assign`, { user_id: userId });
+  },
+
+  async unassign(conversationId: string): Promise<void> {
+    await api.post(`/conversations/${conversationId}/unassign`);
   },
 
   async transfer(conversationId: string, data: { agent_id?: string; transfer_to_human?: boolean }): Promise<void> {

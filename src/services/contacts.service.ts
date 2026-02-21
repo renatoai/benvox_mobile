@@ -1,10 +1,15 @@
 import api from './api';
 import type { Contact } from '../types';
 
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+}
+
 export const contactsService = {
   async getAll(params?: { search?: string; limit?: number; offset?: number }): Promise<Contact[]> {
-    const response = await api.get<Contact[]>('/contacts', { params });
-    return response.data;
+    const response = await api.get<PaginatedResponse<Contact>>('/contacts', { params });
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
   },
 
   async getById(id: string): Promise<Contact> {
@@ -26,11 +31,15 @@ export const contactsService = {
     await api.delete(`/contacts/${id}`);
   },
 
-  async addTag(contactId: string, tagId: string): Promise<void> {
-    await api.post(`/contacts/${contactId}/tags/${tagId}`);
+  async fetchAvatar(id: string): Promise<void> {
+    await api.post(`/contacts/${id}/fetch-avatar`);
   },
 
-  async removeTag(contactId: string, tagId: string): Promise<void> {
-    await api.delete(`/contacts/${contactId}/tags/${tagId}`);
+  async block(id: string): Promise<void> {
+    await api.post(`/contacts/${id}/block`);
+  },
+
+  async unblock(id: string): Promise<void> {
+    await api.post(`/contacts/${id}/unblock`);
   },
 };

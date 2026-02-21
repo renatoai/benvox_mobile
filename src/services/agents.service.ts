@@ -1,10 +1,15 @@
 import api from './api';
 import type { AiAgent } from '../types';
 
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+}
+
 export const agentsService = {
   async getAll(): Promise<AiAgent[]> {
-    const response = await api.get<AiAgent[]>('/ai-agents');
-    return response.data;
+    const response = await api.get<PaginatedResponse<AiAgent>>('/ai-agents');
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
   },
 
   async getById(id: string): Promise<AiAgent> {
@@ -26,18 +31,28 @@ export const agentsService = {
     await api.delete(`/ai-agents/${id}`);
   },
 
-  async getTools(): Promise<{ name: string; description: string }[]> {
-    const response = await api.get('/ai-agents/tools');
+  async duplicate(id: string): Promise<AiAgent> {
+    const response = await api.post<AiAgent>(`/ai-agents/${id}/duplicate`);
     return response.data;
   },
 
-  async getModels(): Promise<{ id: string; name: string; provider: string }[]> {
-    const response = await api.get('/ai-models');
-    return response.data;
+  async getTools(id: string): Promise<any[]> {
+    const response = await api.get(`/ai-agents/${id}/tools`);
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
+  },
+
+  async getLearnings(id: string): Promise<any[]> {
+    const response = await api.get(`/ai-agents/${id}/learnings`);
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
   },
 
   async testAgent(id: string, message: string): Promise<{ response: string }> {
     const response = await api.post(`/ai-agents/${id}/test`, { message });
+    return response.data;
+  },
+
+  async chat(id: string, message: string, conversationId?: string): Promise<any> {
+    const response = await api.post(`/ai-agents/${id}/chat`, { message, conversationId });
     return response.data;
   },
 };

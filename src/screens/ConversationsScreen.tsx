@@ -33,7 +33,7 @@ interface Channel {
 interface ChannelSection {
   channel: Channel;
   data: Conversation[];
-  cursor?: string;
+  offset: number;
   hasMore: boolean;
   isLoading: boolean;
 }
@@ -103,6 +103,7 @@ export function ConversationsScreen() {
       const initialSections: ChannelSection[] = channelsData.map((ch: Channel) => ({
         channel: ch,
         data: [],
+        offset: 0,
         hasMore: true,
         isLoading: false,
       }));
@@ -110,7 +111,7 @@ export function ConversationsScreen() {
       
       // Load first page for each channel
       for (const channel of channelsData) {
-        loadChannelConversations(channel.id_channel, false);
+        loadChannelConversationsWithOffset(channel.id_channel, 0, false);
       }
       
       // Expand first channel by default
@@ -125,7 +126,7 @@ export function ConversationsScreen() {
     }
   }, []);
 
-  const loadChannelConversations = async (channelId: string, loadMore: boolean) => {
+  const loadChannelConversationsWithOffset = async (channelId: string, offset: number, loadMore: boolean) => {
     setSections(prev => prev.map(s => 
       s.channel.id_channel === channelId 
         ? { ...s, isLoading: true }
@@ -133,13 +134,10 @@ export function ConversationsScreen() {
     ));
 
     try {
-      const section = sections.find(s => s.channel.id_channel === channelId);
-      const cursor = loadMore ? section?.cursor : undefined;
-      
       const response = await conversationsService.getAll({ 
         limit: ITEMS_PER_PAGE, 
-        cursor,
         // @ts-ignore - backend supports these params
+        offset: offset,
         id_channel: channelId,
       });
       
@@ -153,9 +151,9 @@ export function ConversationsScreen() {
         return {
           ...s,
           data: newData,
+          offset: offset + response.length,
           hasMore: response.length === ITEMS_PER_PAGE,
           isLoading: false,
-          // cursor: response.nextCursor, // If API returns cursor
         };
       }));
     } catch (error) {
@@ -165,6 +163,21 @@ export function ConversationsScreen() {
           ? { ...s, isLoading: false }
           : s
       ));
+    }
+  };
+
+  const loadMoreConversations = (channelId: string) => {
+    const section = sections.find(s => s.channel.id_channel === channelId);
+    if (section && section.hasMore && !section.isLoading) {
+      loadChannelConversationsWithOffset(channelId, section.offset, true);
+    }
+  };
+
+  const loadChannelConversations = (channelId: string, loadMore: boolean) => {
+    if (loadMore) {
+      loadMoreConversations(channelId);
+    } else {
+      loadChannelConversationsWithOffset(channelId, 0, false);
     }
   };
 
@@ -368,13 +381,13 @@ export function ConversationsScreen() {
             {section.hasMore && section.data.length > 0 && (
               <TouchableOpacity
                 style={styles.loadMoreBtn}
-                onPress={() => loadChannelConversations(section.channel.id_channel, true)}
+                onPress={() => loadMoreConversations(section.channel.id_channel)}
                 disabled={section.isLoading}
               >
                 {section.isLoading ? (
                   <ActivityIndicator size="small" color="#25D366" />
                 ) : (
-                  <Text style={styles.loadMoreText}>Carregar mais...</Text>
+                  <Text style={styles.loadMoreText}>Carregar mais... ({section.data.length})</Text>
                 )}
               </TouchableOpacity>
             )}

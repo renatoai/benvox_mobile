@@ -10,7 +10,7 @@ interface PaginatedResponse<T> {
 }
 
 export const conversationsService = {
-  async getAll(params?: { limit?: number; cursor?: string }): Promise<Conversation[]> {
+  async getAll(params?: { limit?: number; offset?: number; cursor?: string; id_channel?: string }): Promise<Conversation[]> {
     const response = await api.get<PaginatedResponse<Conversation>>('/conversations', { params });
     return Array.isArray(response.data) ? response.data : response.data.data || [];
   },

@@ -19,3 +19,4 @@ export { NewTagScreen } from './NewTagScreen';
 export { KnowledgeScreen } from './KnowledgeScreen';
 export { KnowledgeDetailScreen } from './KnowledgeDetailScreen';
 export { AssistantScreen } from './AssistantScreen';
+export { DevToolsScreen } from './DevToolsScreen';

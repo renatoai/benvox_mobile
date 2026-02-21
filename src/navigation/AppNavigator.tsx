@@ -25,6 +25,7 @@ import {
   KnowledgeScreen,
   KnowledgeDetailScreen,
   AssistantScreen,
+  DevToolsScreen,
 } from '../screens';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -168,6 +169,14 @@ function DrawerNavigator() {
         options={{
           title: 'Configurações',
           drawerIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>⚙️</Text>,
+        }}
+      />
+      <Drawer.Screen
+        name="DevTools"
+        component={DevToolsScreen}
+        options={{
+          title: 'Dev Tools',
+          drawerIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🛠️</Text>,
         }}
       />
     </Drawer.Navigator>

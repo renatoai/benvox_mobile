@@ -41,6 +41,15 @@ export const agentsService = {
     return Array.isArray(response.data) ? response.data : response.data.data || [];
   },
 
+  async getAllTools(): Promise<any[]> {
+    const response = await api.get('/ai-agents/tools/available');
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
+  },
+
+  async updateTools(id: string, tools: string[]): Promise<void> {
+    await api.patch(`/ai-agents/${id}`, { allowed_actions: tools });
+  },
+
   async getLearnings(id: string): Promise<any[]> {
     const response = await api.get(`/ai-agents/${id}/learnings`);
     return Array.isArray(response.data) ? response.data : response.data.data || [];

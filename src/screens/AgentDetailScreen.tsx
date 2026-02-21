@@ -9,10 +9,37 @@ import {
   TextInput,
   Alert,
   Switch,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { agentsService } from '../services';
 import type { AiAgent } from '../types';
+
+// Default tools list (fallback if API doesn't return)
+const DEFAULT_TOOLS = [
+  'send_whatsapp_message',
+  'send_audio',
+  'send_buttons',
+  'send_list',
+  'generate_image',
+  'text_to_speech',
+  'web_search',
+  'web_scrape',
+  'get_contact_info',
+  'update_contact_info',
+  'save_memory',
+  'get_conversation_history',
+  'move_stage',
+  'transfer_agent',
+  'transfer_human',
+  'end_session',
+  'schedule_followup',
+  'cancel_followup',
+  'search_knowledge_base',
+  'get_current_datetime',
+  'analyze_image',
+];
 
 export function AgentDetailScreen() {
   const route = useRoute<any>();
@@ -30,15 +57,24 @@ export function AgentDetailScreen() {
     greeting_message: '',
     is_active: true,
   });
+  
+  // Tools/permissions
+  const [showToolsModal, setShowToolsModal] = useState(false);
+  const [availableTools, setAvailableTools] = useState<string[]>(DEFAULT_TOOLS);
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [toolSearch, setToolSearch] = useState('');
+  const [isSavingTools, setIsSavingTools] = useState(false);
 
   useEffect(() => {
     loadAgent();
+    loadAvailableTools();
   }, [agentId]);
 
   async function loadAgent() {
     try {
       const data = await agentsService.getById(agentId);
       setAgent(data);
+      setSelectedTools(data.allowed_actions || []);
       setFormData({
         name: data.name || '',
         instructions: data.instructions || '',
@@ -54,6 +90,20 @@ export function AgentDetailScreen() {
     }
   }
 
+  async function loadAvailableTools() {
+    try {
+      const tools = await agentsService.getAllTools();
+      if (tools && tools.length > 0) {
+        // Tools may come as objects with name property or as strings
+        const toolNames = tools.map((t: any) => typeof t === 'string' ? t : t.name || t.tool_name);
+        setAvailableTools(toolNames);
+      }
+    } catch (error) {
+      console.error('Error loading tools:', error);
+      // Keep default tools
+    }
+  }
+
   async function handleSave() {
     setIsSaving(true);
     try {
@@ -66,6 +116,36 @@ export function AgentDetailScreen() {
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function handleSaveTools() {
+    setIsSavingTools(true);
+    try {
+      await agentsService.updateTools(agentId, selectedTools);
+      await loadAgent();
+      setShowToolsModal(false);
+      Alert.alert('Sucesso', 'Permissões atualizadas!');
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível salvar permissões');
+    } finally {
+      setIsSavingTools(false);
+    }
+  }
+
+  function toggleTool(tool: string) {
+    setSelectedTools(prev => 
+      prev.includes(tool) 
+        ? prev.filter(t => t !== tool)
+        : [...prev, tool]
+    );
+  }
+
+  function selectAllTools() {
+    setSelectedTools([...availableTools]);
+  }
+
+  function deselectAllTools() {
+    setSelectedTools([]);
   }
 
   async function handleDelete() {
@@ -99,6 +179,14 @@ export function AgentDetailScreen() {
       Alert.alert('Erro', 'Não foi possível duplicar');
     }
   }
+
+  const filteredTools = availableTools.filter(tool => 
+    tool.toLowerCase().includes(toolSearch.toLowerCase())
+  );
+
+  const getToolDisplayName = (tool: string) => {
+    return tool.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
 
   if (isLoading) {
     return (
@@ -206,21 +294,28 @@ export function AgentDetailScreen() {
         )}
       </View>
 
-      {agent.allowed_actions && agent.allowed_actions.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ferramentas ({agent.allowed_actions.length})</Text>
-          <View style={styles.toolsContainer}>
-            {agent.allowed_actions.slice(0, 10).map((tool, i) => (
-              <View key={i} style={styles.toolBadge}>
-                <Text style={styles.toolText}>{tool}</Text>
-              </View>
-            ))}
-            {agent.allowed_actions.length > 10 && (
-              <Text style={styles.moreText}>+{agent.allowed_actions.length - 10} mais</Text>
-            )}
-          </View>
+      {/* Tools/Permissions Section */}
+      <TouchableOpacity style={styles.section} onPress={() => setShowToolsModal(true)}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Ferramentas / Permissões</Text>
+          <Text style={styles.editLink}>Editar ▶</Text>
         </View>
-      )}
+        <View style={styles.toolsContainer}>
+          {(agent.allowed_actions || []).slice(0, 6).map((tool, i) => (
+            <View key={i} style={styles.toolBadge}>
+              <Text style={styles.toolText}>{getToolDisplayName(tool)}</Text>
+            </View>
+          ))}
+          {(agent.allowed_actions || []).length > 6 && (
+            <View style={styles.moreBadge}>
+              <Text style={styles.moreText}>+{(agent.allowed_actions || []).length - 6}</Text>
+            </View>
+          )}
+          {(!agent.allowed_actions || agent.allowed_actions.length === 0) && (
+            <Text style={styles.noTools}>Nenhuma ferramenta habilitada</Text>
+          )}
+        </View>
+      </TouchableOpacity>
 
       {editMode && (
         <TouchableOpacity
@@ -235,6 +330,60 @@ export function AgentDetailScreen() {
           )}
         </TouchableOpacity>
       )}
+
+      {/* Tools Modal */}
+      <Modal visible={showToolsModal} animationType="slide" onRequestClose={() => setShowToolsModal(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowToolsModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Permissões</Text>
+            <TouchableOpacity onPress={handleSaveTools} disabled={isSavingTools}>
+              <Text style={[styles.modalSave, isSavingTools && { opacity: 0.5 }]}>
+                {isSavingTools ? '...' : 'Salvar'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              value={toolSearch}
+              onChangeText={setToolSearch}
+              placeholder="Buscar ferramenta..."
+              placeholderTextColor="#999"
+            />
+          </View>
+
+          <View style={styles.selectAllRow}>
+            <TouchableOpacity style={styles.selectAllBtn} onPress={selectAllTools}>
+              <Text style={styles.selectAllText}>✓ Selecionar Todas</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.selectAllBtn} onPress={deselectAllTools}>
+              <Text style={styles.selectAllText}>✕ Limpar</Text>
+            </TouchableOpacity>
+            <Text style={styles.countText}>{selectedTools.length}/{availableTools.length}</Text>
+          </View>
+
+          <FlatList
+            data={filteredTools}
+            keyExtractor={(item) => item}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                style={styles.toolItem}
+                onPress={() => toggleTool(item)}
+              >
+                <View style={[styles.checkbox, selectedTools.includes(item) && styles.checkboxChecked]}>
+                  {selectedTools.includes(item) && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.toolItemText}>{getToolDisplayName(item)}</Text>
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={styles.toolsList}
+          />
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -282,12 +431,22 @@ const styles = StyleSheet.create({
     marginTop: 12,
     padding: 16,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
     color: '#075E54',
     textTransform: 'uppercase',
     marginBottom: 8,
+  },
+  editLink: {
+    fontSize: 13,
+    color: '#25D366',
+    fontWeight: '500',
   },
   value: { fontSize: 15, color: '#333', lineHeight: 22 },
   input: {
@@ -307,7 +466,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  toolsContainer: { flexDirection: 'row', flexWrap: 'wrap' },
+  toolsContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 },
   toolBadge: {
     backgroundColor: '#e3f2fd',
     paddingHorizontal: 10,
@@ -317,7 +476,14 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   toolText: { fontSize: 12, color: '#1976d2' },
-  moreText: { fontSize: 12, color: '#666', alignSelf: 'center' },
+  moreBadge: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  moreText: { fontSize: 12, color: '#666' },
+  noTools: { fontSize: 14, color: '#999', fontStyle: 'italic' },
   saveButton: {
     backgroundColor: '#25D366',
     margin: 16,
@@ -327,4 +493,67 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.7 },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  
+  // Modal
+  modalContainer: { flex: 1, backgroundColor: '#fff' },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    paddingTop: 50,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#f9f9f9',
+  },
+  modalCancel: { fontSize: 16, color: '#666' },
+  modalTitle: { fontSize: 17, fontWeight: '600' },
+  modalSave: { fontSize: 16, color: '#25D366', fontWeight: '600' },
+  searchContainer: { padding: 12 },
+  searchInput: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 15,
+  },
+  selectAllRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  selectAllBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 6,
+  },
+  selectAllText: { fontSize: 13, color: '#666' },
+  countText: { fontSize: 13, color: '#999', marginLeft: 'auto' },
+  toolsList: { paddingHorizontal: 12 },
+  toolItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#25D366',
+    borderColor: '#25D366',
+  },
+  checkmark: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  toolItemText: { fontSize: 15, color: '#333' },
 });

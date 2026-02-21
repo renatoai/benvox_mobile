@@ -12,6 +12,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { agentsService } from '../services';
 import type { AiAgent } from '../types';
+import { colors, spacing, radius, typography, shadows } from '../theme';
 
 export function AgentsScreen() {
   const navigation = useNavigation<any>();
@@ -58,26 +59,37 @@ export function AgentsScreen() {
 
   const renderItem = ({ item }: { item: AiAgent }) => (
     <TouchableOpacity 
-      style={styles.item}
+      style={styles.card}
       onPress={() => navigation.navigate('AgentDetail', { agentId: item.id_ai_agent })}
+      activeOpacity={0.7}
     >
-      <View style={styles.itemIcon}>
+      <View style={[styles.iconWrapper, item.is_active && styles.iconWrapperActive]}>
         <Text style={styles.iconText}>🤖</Text>
       </View>
-      <View style={styles.itemContent}>
-        <Text style={styles.itemTitle}>{item.name}</Text>
-        <Text style={styles.itemSubtitle}>{item.model || 'gpt-4'}</Text>
-        {item.greeting_enabled && (
-          <View style={styles.greetingBadge}>
-            <Text style={styles.greetingText}>👋 Saudação ativa</Text>
-          </View>
-        )}
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle}>{item.name}</Text>
+        <Text style={styles.cardSubtitle}>{item.model || 'gpt-4'}</Text>
+        <View style={styles.badgesRow}>
+          {item.greeting_enabled && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>👋 Saudação</Text>
+            </View>
+          )}
+          {item.allowed_actions && item.allowed_actions.length > 0 && (
+            <View style={[styles.badge, styles.badgeInfo]}>
+              <Text style={[styles.badgeText, styles.badgeTextInfo]}>
+                {item.allowed_actions.length} tools
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
       <Switch
         value={item.is_active}
         onValueChange={() => toggleAgent(item)}
-        trackColor={{ false: '#ddd', true: '#25D366' }}
-        thumbColor="#fff"
+        trackColor={{ false: colors.border, true: colors.primary }}
+        thumbColor={colors.surface}
+        ios_backgroundColor={colors.border}
       />
     </TouchableOpacity>
   );
@@ -85,7 +97,8 @@ export function AgentsScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#25D366" />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Carregando agentes...</Text>
       </View>
     );
   }
@@ -97,20 +110,29 @@ export function AgentsScreen() {
         keyExtractor={(item) => item.id_ai_agent}
         renderItem={renderItem}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#25D366']} />
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>🤖</Text>
-            <Text style={styles.emptyText}>Nenhum agente</Text>
-            <Text style={styles.emptySubtext}>Crie agentes de IA para automatizar atendimentos</Text>
+            <Text style={styles.emptyTitle}>Nenhum agente</Text>
+            <Text style={styles.emptySubtitle}>Crie seu primeiro agente de IA</Text>
           </View>
         }
-        contentContainerStyle={agents.length === 0 ? styles.emptyList : undefined}
+        contentContainerStyle={agents.length === 0 ? { flex: 1 } : { padding: spacing.md }}
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
       />
-      <TouchableOpacity 
+
+      {/* FAB */}
+      <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('NewAgent')}
+        activeOpacity={0.8}
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
@@ -119,64 +141,119 @@ export function AgentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  itemIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e3f2fd',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    backgroundColor: colors.background,
+    gap: spacing.md,
   },
-  iconText: { fontSize: 24 },
-  itemContent: { flex: 1 },
-  itemTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
-  itemSubtitle: { fontSize: 14, color: '#666', marginTop: 2 },
-  greetingBadge: {
-    marginTop: 6,
-    backgroundColor: '#e8f5e9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
-  greetingText: { fontSize: 12, color: '#2e7d32' },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
-  emptyList: { flex: 1 },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#333' },
-  emptySubtext: { fontSize: 14, color: '#666', marginTop: 8, textAlign: 'center', paddingHorizontal: 32 },
+  
+  // Card
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    ...shadows.sm,
+  },
+  iconWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceHover,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconWrapperActive: {
+    backgroundColor: colors.primarySoft,
+  },
+  iconText: {
+    fontSize: 26,
+  },
+  cardContent: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+  cardTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  cardSubtitle: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  badge: {
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.xs,
+  },
+  badgeInfo: {
+    backgroundColor: colors.humanBg,
+  },
+  badgeText: {
+    ...typography.labelSmall,
+    color: colors.primaryDark,
+  },
+  badgeTextInfo: {
+    color: colors.humanText,
+  },
+  
+  // Empty
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  emptySubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  
+  // FAB
   fab: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
+    bottom: spacing.xxl,
+    right: spacing.xl,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#25D366',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...shadows.lg,
   },
-  fabIcon: { color: '#fff', fontSize: 28, fontWeight: '300' },
+  fabIcon: {
+    fontSize: 28,
+    color: colors.textInverse,
+    fontWeight: '300',
+  },
 });

@@ -12,6 +12,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { tagsService } from '../services';
 import type { Tag } from '../types';
+import { colors, spacing, radius, typography, shadows } from '../theme';
 
 export function TagsScreen() {
   const navigation = useNavigation<any>();
@@ -69,17 +70,19 @@ export function TagsScreen() {
 
   const renderItem = ({ item }: { item: Tag }) => (
     <TouchableOpacity 
-      style={styles.item}
+      style={styles.card}
       onLongPress={() => handleDelete(item)}
+      activeOpacity={0.7}
     >
-      <View style={[styles.colorDot, { backgroundColor: item.color }]} />
-      <View style={styles.itemContent}>
-        <Text style={styles.itemTitle}>{item.name}</Text>
+      <View style={[styles.colorIndicator, { backgroundColor: item.color }]} />
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle}>{item.name}</Text>
         {item.description && (
-          <Text style={styles.itemSubtitle} numberOfLines={1}>{item.description}</Text>
+          <Text style={styles.cardDescription} numberOfLines={1}>{item.description}</Text>
         )}
       </View>
-      <View style={[styles.previewTag, { backgroundColor: item.color + '20' }]}>
+      <View style={[styles.previewTag, { backgroundColor: item.color + '15' }]}>
+        <View style={[styles.tagDot, { backgroundColor: item.color }]} />
         <Text style={[styles.previewText, { color: item.color }]}>{item.name}</Text>
       </View>
     </TouchableOpacity>
@@ -88,7 +91,8 @@ export function TagsScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#25D366" />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Carregando tags...</Text>
       </View>
     );
   }
@@ -100,25 +104,34 @@ export function TagsScreen() {
         keyExtractor={(item) => item.id_tag}
         renderItem={renderItem}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#25D366']} />
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh} 
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>🏷️</Text>
-            <Text style={styles.emptyText}>Nenhuma tag</Text>
-            <Text style={styles.emptySubtext}>Crie tags para organizar seus contatos</Text>
+            <Text style={styles.emptyTitle}>Nenhuma tag</Text>
+            <Text style={styles.emptySubtitle}>Crie tags para organizar seus contatos</Text>
           </View>
         }
-        contentContainerStyle={tags.length === 0 ? styles.emptyList : undefined}
+        contentContainerStyle={tags.length === 0 ? { flex: 1 } : { padding: spacing.md }}
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
         ListFooterComponent={
           tags.length > 0 ? (
             <Text style={styles.hint}>Segure para excluir</Text>
           ) : null
         }
       />
+      
+      {/* FAB */}
       <TouchableOpacity 
         style={styles.fab}
         onPress={() => navigation.navigate('NewTag')}
+        activeOpacity={0.8}
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
@@ -127,63 +140,112 @@ export function TagsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  item: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    gap: spacing.md,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  
+  // Card
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    ...shadows.sm,
   },
-  colorDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    marginRight: 12,
+  colorIndicator: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    marginRight: spacing.md,
   },
-  itemContent: { flex: 1 },
-  itemTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
-  itemSubtitle: { fontSize: 14, color: '#666', marginTop: 2 },
+  cardContent: {
+    flex: 1,
+  },
+  cardTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  cardDescription: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
   previewTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.xs,
+    gap: spacing.xs,
   },
-  previewText: { fontSize: 12, fontWeight: '500' },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
-  emptyList: { flex: 1 },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#333' },
-  emptySubtext: { fontSize: 14, color: '#666', marginTop: 8 },
-  hint: {
+  tagDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  previewText: {
+    ...typography.labelSmall,
+    fontWeight: '600',
+  },
+  
+  // Empty
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  emptySubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
     textAlign: 'center',
-    fontSize: 12,
-    color: '#999',
-    padding: 16,
   },
+  hint: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    padding: spacing.lg,
+  },
+  
+  // FAB
   fab: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
+    bottom: spacing.xxl,
+    right: spacing.xl,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#25D366',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...shadows.lg,
   },
-  fabIcon: { color: '#fff', fontSize: 28, fontWeight: '300' },
+  fabIcon: {
+    fontSize: 28,
+    color: colors.textInverse,
+    fontWeight: '300',
+  },
 });

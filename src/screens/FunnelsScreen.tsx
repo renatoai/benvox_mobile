@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { funnelsService } from '../services';
 import type { Funnel } from '../types';
+import { colors, spacing, radius, typography, shadows } from '../theme';
 
 export function FunnelsScreen() {
   const navigation = useNavigation<any>();
@@ -39,41 +40,51 @@ export function FunnelsScreen() {
     loadFunnels();
   }, [loadFunnels]);
 
-  const renderItem = ({ item }: { item: Funnel }) => (
-    <TouchableOpacity 
-      style={styles.item}
-      onPress={() => navigation.navigate('FunnelDetail', { 
-        funnelId: item.id_pipeline || item.id_funnel, 
-        name: item.name 
-      })}
-    >
-      <View style={styles.itemIcon}>
-        <Text style={styles.iconText}>🎯</Text>
-      </View>
-      <View style={styles.itemContent}>
-        <View style={styles.itemHeader}>
-          <Text style={styles.itemTitle}>{item.name}</Text>
-          {item.is_published && (
-            <View style={styles.publishedBadge}>
-              <Text style={styles.publishedBadgeText}>Ativo</Text>
-            </View>
-          )}
+  const renderItem = ({ item }: { item: Funnel }) => {
+    const stageCount = item.stage_count || item.stages?.length || 0;
+    
+    return (
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => navigation.navigate('FunnelDetail', { 
+          funnelId: item.id_pipeline || item.id_funnel, 
+          name: item.name 
+        })}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconWrapper, item.is_published && styles.iconWrapperActive]}>
+          <Text style={styles.iconText}>🎯</Text>
         </View>
-        {item.description && (
-          <Text style={styles.itemSubtitle} numberOfLines={1}>{item.description}</Text>
-        )}
-        <Text style={styles.stagesCount}>
-          {item.stage_count || item.stages?.length || 0} etapas
-        </Text>
-      </View>
-      <Text style={styles.arrow}>›</Text>
-    </TouchableOpacity>
-  );
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
+            {item.is_published && (
+              <View style={styles.activeBadge}>
+                <View style={styles.activeDot} />
+                <Text style={styles.activeBadgeText}>Ativo</Text>
+              </View>
+            )}
+          </View>
+          {item.description && (
+            <Text style={styles.cardDescription} numberOfLines={1}>{item.description}</Text>
+          )}
+          <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{stageCount}</Text>
+              <Text style={styles.statLabel}>etapas</Text>
+            </View>
+          </View>
+        </View>
+        <Text style={styles.chevron}>›</Text>
+      </TouchableOpacity>
+    );
+  };
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#25D366" />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Carregando funis...</Text>
       </View>
     );
   }
@@ -85,65 +96,151 @@ export function FunnelsScreen() {
         keyExtractor={(item) => item.id_pipeline || item.id_funnel}
         renderItem={renderItem}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#25D366']} />
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh} 
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>🎯</Text>
-            <Text style={styles.emptyText}>Nenhum funil</Text>
-            <Text style={styles.emptySubtext}>Crie funis para organizar seus contatos</Text>
+            <Text style={styles.emptyTitle}>Nenhum funil</Text>
+            <Text style={styles.emptySubtitle}>Crie funis para organizar seus contatos</Text>
           </View>
         }
-        contentContainerStyle={funnels.length === 0 ? styles.emptyList : undefined}
+        contentContainerStyle={funnels.length === 0 ? { flex: 1 } : { padding: spacing.md }}
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  itemIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e8f5e9',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    backgroundColor: colors.background,
+    gap: spacing.md,
   },
-  iconText: { fontSize: 24 },
-  itemContent: { flex: 1 },
-  itemHeader: { flexDirection: 'row', alignItems: 'center' },
-  itemTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
-  itemSubtitle: { fontSize: 14, color: '#666', marginTop: 2 },
-  stagesCount: { fontSize: 12, color: '#25D366', marginTop: 4, fontWeight: '500' },
-  publishedBadge: {
-    backgroundColor: '#e8f5e9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 8,
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
-  publishedBadgeText: { fontSize: 10, color: '#2e7d32', fontWeight: '600' },
-  arrow: { fontSize: 24, color: '#ccc' },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
-  emptyList: { flex: 1 },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#333' },
-  emptySubtext: { fontSize: 14, color: '#666', marginTop: 8 },
+  
+  // Card
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    ...shadows.sm,
+  },
+  iconWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceHover,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconWrapperActive: {
+    backgroundColor: colors.primarySoft,
+  },
+  iconText: {
+    fontSize: 26,
+  },
+  cardContent: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  cardTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  activeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.successSoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.xs,
+    gap: spacing.xs,
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.success,
+  },
+  activeBadgeText: {
+    ...typography.labelSmall,
+    color: colors.success,
+    fontWeight: '600',
+  },
+  cardDescription: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+    gap: spacing.lg,
+  },
+  stat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  statValue: {
+    ...typography.bodySmall,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  statLabel: {
+    ...typography.caption,
+    color: colors.textTertiary,
+  },
+  chevron: {
+    fontSize: 24,
+    color: colors.textTertiary,
+    marginLeft: spacing.sm,
+  },
+  
+  // Empty
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  emptySubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
 });

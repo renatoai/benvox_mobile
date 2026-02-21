@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { tasksService } from '../services';
 import type { Task } from '../types';
+import { colors, spacing, radius, typography, shadows } from '../theme';
 
 export function TasksScreen() {
   const navigation = useNavigation<any>();
@@ -58,95 +59,143 @@ export function TasksScreen() {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityStyle = (priority: string) => {
     switch (priority) {
-      case 'high': return '#e74c3c';
-      case 'medium': return '#f39c12';
-      case 'low': return '#27ae60';
-      default: return '#666';
+      case 'high': return { bg: '#FEE2E2', color: '#DC2626', label: 'Alta' };
+      case 'medium': return { bg: '#FEF3C7', color: '#D97706', label: 'Média' };
+      case 'low': return { bg: '#D1FAE5', color: '#059669', label: 'Baixa' };
+      default: return { bg: colors.surfaceHover, color: colors.textSecondary, label: 'Normal' };
     }
   };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    if (date.toDateString() === today.toDateString()) return 'Hoje';
+    if (date.toDateString() === tomorrow.toDateString()) return 'Amanhã';
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   };
 
-  const renderItem = ({ item }: { item: Task }) => (
-    <TouchableOpacity style={styles.item} onPress={() => toggleComplete(item)}>
+  const isOverdue = (dateString?: string) => {
+    if (!dateString) return false;
+    return new Date(dateString) < new Date();
+  };
+
+  const renderItem = ({ item }: { item: Task }) => {
+    const priority = getPriorityStyle(item.priority);
+    const overdue = item.status !== 'completed' && isOverdue(item.due_date);
+    
+    return (
       <TouchableOpacity 
-        style={[styles.checkbox, item.status === 'completed' && styles.checkboxChecked]}
+        style={styles.card} 
         onPress={() => toggleComplete(item)}
+        activeOpacity={0.7}
       >
-        {item.status === 'completed' && <Text style={styles.checkmark}>✓</Text>}
-      </TouchableOpacity>
-      <View style={styles.itemContent}>
-        <Text style={[styles.itemTitle, item.status === 'completed' && styles.completedText]}>
-          {item.title}
-        </Text>
-        {item.description && (
-          <Text style={styles.itemSubtitle} numberOfLines={1}>{item.description}</Text>
-        )}
-        <View style={styles.itemMeta}>
-          {item.due_date && (
-            <Text style={styles.dueDate}>📅 {formatDate(item.due_date)}</Text>
+        <TouchableOpacity 
+          style={[styles.checkbox, item.status === 'completed' && styles.checkboxChecked]}
+          onPress={() => toggleComplete(item)}
+        >
+          {item.status === 'completed' && <Text style={styles.checkmark}>✓</Text>}
+        </TouchableOpacity>
+        <View style={styles.cardContent}>
+          <Text style={[styles.cardTitle, item.status === 'completed' && styles.completedText]}>
+            {item.title}
+          </Text>
+          {item.description && (
+            <Text style={styles.cardDescription} numberOfLines={1}>{item.description}</Text>
           )}
-          {item.contact_name && (
-            <Text style={styles.contactName}>👤 {item.contact_name}</Text>
-          )}
+          <View style={styles.metaRow}>
+            {item.due_date && (
+              <View style={[styles.metaItem, overdue && styles.metaItemOverdue]}>
+                <Text style={styles.metaIcon}>📅</Text>
+                <Text style={[styles.metaText, overdue && styles.metaTextOverdue]}>
+                  {formatDate(item.due_date)}
+                </Text>
+              </View>
+            )}
+            {item.contact_name && (
+              <View style={styles.metaItem}>
+                <Text style={styles.metaIcon}>👤</Text>
+                <Text style={styles.metaText}>{item.contact_name}</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-      <View style={[styles.priorityDot, { backgroundColor: getPriorityColor(item.priority) }]} />
-    </TouchableOpacity>
-  );
+        <View style={[styles.priorityBadge, { backgroundColor: priority.bg }]}>
+          <Text style={[styles.priorityText, { color: priority.color }]}>{priority.label}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const filters = [
-    { key: 'all', label: 'Todas' },
-    { key: 'pending', label: 'Pendentes' },
-    { key: 'completed', label: 'Concluídas' },
+    { key: 'all', label: 'Todas', icon: '📋' },
+    { key: 'pending', label: 'Pendentes', icon: '⏳' },
+    { key: 'completed', label: 'Concluídas', icon: '✅' },
   ];
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#25D366" />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Carregando tarefas...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {/* Filters */}
       <View style={styles.filterContainer}>
         {filters.map((f) => (
           <TouchableOpacity
             key={f.key}
             style={[styles.filterButton, filter === f.key && styles.filterButtonActive]}
             onPress={() => setFilter(f.key)}
+            activeOpacity={0.7}
           >
+            <Text style={styles.filterIcon}>{f.icon}</Text>
             <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
               {f.label}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
+
       <FlatList
         data={tasks}
         keyExtractor={(item) => item.id_task}
         renderItem={renderItem}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#25D366']} />
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh} 
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>✅</Text>
-            <Text style={styles.emptyText}>Nenhuma tarefa</Text>
+            <Text style={styles.emptyTitle}>Nenhuma tarefa</Text>
+            <Text style={styles.emptySubtitle}>
+              {filter === 'completed' ? 'Nenhuma tarefa concluída' : 'Crie sua primeira tarefa'}
+            </Text>
           </View>
         }
+        contentContainerStyle={tasks.length === 0 ? { flex: 1 } : { padding: spacing.md, paddingTop: 0 }}
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
       />
+
+      {/* FAB */}
       <TouchableOpacity 
         style={styles.fab}
         onPress={() => navigation.navigate('NewTask')}
+        activeOpacity={0.8}
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
@@ -155,75 +204,179 @@ export function TasksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    gap: spacing.md,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  
+  // Filters
   filterContainer: {
     flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#fff',
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: spacing.sm,
   },
   filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    marginRight: 8,
-  },
-  filterButtonActive: { backgroundColor: '#25D366' },
-  filterText: { fontSize: 14, color: '#666' },
-  filterTextActive: { color: '#fff', fontWeight: '600' },
-  item: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceHover,
+    gap: spacing.xs,
+  },
+  filterButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  filterIcon: {
+    fontSize: 14,
+  },
+  filterText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  filterTextActive: {
+    color: colors.textInverse,
+    fontWeight: '600',
+  },
+  
+  // Card
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    ...shadows.sm,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 2,
-    borderColor: '#ccc',
-    marginRight: 12,
+    borderColor: colors.border,
+    marginRight: spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  checkboxChecked: { backgroundColor: '#25D366', borderColor: '#25D366' },
-  checkmark: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-  itemContent: { flex: 1 },
-  itemTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
-  completedText: { textDecorationLine: 'line-through', color: '#999' },
-  itemSubtitle: { fontSize: 14, color: '#666', marginTop: 2 },
-  itemMeta: { flexDirection: 'row', marginTop: 6, flexWrap: 'wrap' },
-  dueDate: { fontSize: 12, color: '#666', marginRight: 12 },
-  contactName: { fontSize: 12, color: '#666' },
-  priorityDot: { width: 8, height: 8, borderRadius: 4 },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#333' },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkmark: {
+    color: colors.textInverse,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  completedText: {
+    textDecorationLine: 'line-through',
+    color: colors.textTertiary,
+  },
+  cardDescription: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+    gap: spacing.md,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  metaItemOverdue: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.xs,
+  },
+  metaIcon: {
+    fontSize: 12,
+  },
+  metaText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  metaTextOverdue: {
+    color: '#DC2626',
+    fontWeight: '600',
+  },
+  priorityBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.xs,
+    marginLeft: spacing.sm,
+  },
+  priorityText: {
+    ...typography.labelSmall,
+    fontWeight: '600',
+  },
+  
+  // Empty
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  emptySubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  
+  // FAB
   fab: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
+    bottom: spacing.xxl,
+    right: spacing.xl,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#25D366',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...shadows.lg,
   },
-  fabIcon: { color: '#fff', fontSize: 28, fontWeight: '300' },
+  fabIcon: {
+    fontSize: 28,
+    color: colors.textInverse,
+    fontWeight: '300',
+  },
 });

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { settingsService } from '../services';
 import { getStorageItem } from '../utils/storage';
+import { colors, spacing, radius, typography, shadows } from '../theme';
 
 const API_BASE_URL = 'https://api.voxbel.com';
 
@@ -28,10 +29,6 @@ interface AudioSettings {
   tts_provider?: string;
   tts_openai_voice?: string;
   tts_elevenlabs_voice_id?: string;
-}
-
-interface PromptTemplate {
-  prompt_template?: string;
 }
 
 export function DevToolsScreen() {
@@ -150,7 +147,10 @@ export function DevToolsScreen() {
   };
 
   const searchMemories = async () => {
-    if (!memorySearch.trim()) return;
+    if (!memorySearch.trim()) {
+      loadMemories();
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -192,8 +192,8 @@ export function DevToolsScreen() {
   };
 
   const TTS_PROVIDERS = [
-    { key: 'openai', label: 'OpenAI' },
-    { key: 'elevenlabs', label: 'ElevenLabs' },
+    { key: 'openai', label: 'OpenAI', icon: '🤖' },
+    { key: 'elevenlabs', label: 'ElevenLabs', icon: '🎙️' },
   ];
 
   const OPENAI_VOICES = [
@@ -215,58 +215,82 @@ export function DevToolsScreen() {
     { var: '{{rag_context}}', desc: 'Contexto RAG' },
   ];
 
+  const tabs = [
+    { key: 'memory', label: 'Memória', icon: '🧠' },
+    { key: 'audio', label: 'Áudio', icon: '🔊' },
+    { key: 'prompt', label: 'Prompt', icon: '📝' },
+  ];
+
   const renderMemoryExplorer = () => (
     <View style={styles.tabContent}>
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          value={memorySearch}
-          onChangeText={setMemorySearch}
-          placeholder="Buscar memórias..."
-          placeholderTextColor="#999"
-          onSubmitEditing={searchMemories}
-        />
-        <TouchableOpacity style={styles.searchBtn} onPress={searchMemories}>
-          <Text style={styles.searchBtnText}>🔍</Text>
-        </TouchableOpacity>
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputWrapper}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            value={memorySearch}
+            onChangeText={setMemorySearch}
+            placeholder="Buscar memórias..."
+            placeholderTextColor={colors.textTertiary}
+            onSubmitEditing={searchMemories}
+            returnKeyType="search"
+          />
+          {memorySearch.length > 0 && (
+            <TouchableOpacity onPress={() => { setMemorySearch(''); loadMemories(); }}>
+              <Text style={styles.clearIcon}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      <ScrollView style={styles.memoryList}>
+      <ScrollView style={styles.memoryList} showsVerticalScrollIndicator={false}>
         {memories.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>🧠</Text>
-            <Text style={styles.emptyText}>Nenhuma memória encontrada</Text>
+            <Text style={styles.emptyTitle}>Nenhuma memória</Text>
+            <Text style={styles.emptySubtitle}>As memórias do agente aparecerão aqui</Text>
           </View>
         ) : (
           memories.map(memory => (
             <TouchableOpacity
               key={memory.id}
-              style={styles.memoryItem}
+              style={styles.memoryCard}
               onLongPress={() => deleteMemory(memory.id)}
+              activeOpacity={0.7}
             >
               <View style={styles.memoryHeader}>
-                <Text style={styles.memoryType}>{memory.type}</Text>
+                <View style={styles.memoryTypeBadge}>
+                  <Text style={styles.memoryTypeText}>{memory.type}</Text>
+                </View>
                 {memory.contact_name && (
-                  <Text style={styles.memoryContact}>{memory.contact_name}</Text>
+                  <Text style={styles.memoryContact}>👤 {memory.contact_name}</Text>
                 )}
               </View>
               <Text style={styles.memoryContent} numberOfLines={3}>
                 {memory.content}
               </Text>
               <Text style={styles.memoryDate}>
-                {new Date(memory.created_at).toLocaleDateString('pt-BR')}
+                {new Date(memory.created_at).toLocaleDateString('pt-BR', {
+                  day: '2-digit',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
               </Text>
             </TouchableOpacity>
           ))
+        )}
+        {memories.length > 0 && (
+          <Text style={styles.hint}>Segure para excluir</Text>
         )}
       </ScrollView>
     </View>
   );
 
   const renderAudioSettings = () => (
-    <ScrollView style={styles.tabContent}>
-      <View style={styles.settingSection}>
-        <Text style={styles.sectionTitle}>Provedor TTS</Text>
+    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.settingsCard}>
+        <Text style={styles.settingLabel}>Provedor TTS</Text>
         <View style={styles.optionsRow}>
           {TTS_PROVIDERS.map(p => (
             <TouchableOpacity
@@ -276,7 +300,9 @@ export function DevToolsScreen() {
                 audioSettings.tts_provider === p.key && styles.optionBtnActive
               ]}
               onPress={() => setAudioSettings(s => ({ ...s, tts_provider: p.key }))}
+              activeOpacity={0.7}
             >
+              <Text style={styles.optionIcon}>{p.icon}</Text>
               <Text style={[
                 styles.optionBtnText,
                 audioSettings.tts_provider === p.key && styles.optionBtnTextActive
@@ -286,53 +312,55 @@ export function DevToolsScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {audioSettings.tts_provider === 'openai' && (
+          <>
+            <Text style={[styles.settingLabel, { marginTop: spacing.xl }]}>Voz OpenAI</Text>
+            <View style={styles.voicesGrid}>
+              {OPENAI_VOICES.map(v => (
+                <TouchableOpacity
+                  key={v.key}
+                  style={[
+                    styles.voiceBtn,
+                    audioSettings.tts_openai_voice === v.key && styles.voiceBtnActive
+                  ]}
+                  onPress={() => setAudioSettings(s => ({ ...s, tts_openai_voice: v.key }))}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.voiceBtnText,
+                    audioSettings.tts_openai_voice === v.key && styles.voiceBtnTextActive
+                  ]}>
+                    {v.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+
+        {audioSettings.tts_provider === 'elevenlabs' && (
+          <>
+            <Text style={[styles.settingLabel, { marginTop: spacing.xl }]}>Voice ID</Text>
+            <TextInput
+              style={styles.textInput}
+              value={audioSettings.tts_elevenlabs_voice_id}
+              onChangeText={(v) => setAudioSettings(s => ({ ...s, tts_elevenlabs_voice_id: v }))}
+              placeholder="Ex: cgSgspJ2msm6clMCkdW9"
+              placeholderTextColor={colors.textTertiary}
+            />
+          </>
+        )}
       </View>
-
-      {audioSettings.tts_provider === 'openai' && (
-        <View style={styles.settingSection}>
-          <Text style={styles.sectionTitle}>Voz OpenAI</Text>
-          <View style={styles.optionsRow}>
-            {OPENAI_VOICES.map(v => (
-              <TouchableOpacity
-                key={v.key}
-                style={[
-                  styles.optionBtn,
-                  audioSettings.tts_openai_voice === v.key && styles.optionBtnActive
-                ]}
-                onPress={() => setAudioSettings(s => ({ ...s, tts_openai_voice: v.key }))}
-              >
-                <Text style={[
-                  styles.optionBtnText,
-                  audioSettings.tts_openai_voice === v.key && styles.optionBtnTextActive
-                ]}>
-                  {v.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {audioSettings.tts_provider === 'elevenlabs' && (
-        <View style={styles.settingSection}>
-          <Text style={styles.sectionTitle}>Voice ID (ElevenLabs)</Text>
-          <TextInput
-            style={styles.textInput}
-            value={audioSettings.tts_elevenlabs_voice_id}
-            onChangeText={(v) => setAudioSettings(s => ({ ...s, tts_elevenlabs_voice_id: v }))}
-            placeholder="Ex: cgSgspJ2msm6clMCkdW9"
-            placeholderTextColor="#999"
-          />
-        </View>
-      )}
 
       <TouchableOpacity
         style={[styles.saveBtn, isSavingAudio && styles.saveBtnDisabled]}
         onPress={saveAudioSettings}
         disabled={isSavingAudio}
+        activeOpacity={0.8}
       >
         {isSavingAudio ? (
-          <ActivityIndicator size="small" color="#fff" />
+          <ActivityIndicator size="small" color={colors.textInverse} />
         ) : (
           <Text style={styles.saveBtnText}>Salvar Configurações</Text>
         )}
@@ -343,29 +371,35 @@ export function DevToolsScreen() {
   const renderPromptTemplate = () => (
     <View style={styles.tabContent}>
       <View style={styles.promptHeader}>
-        <Text style={styles.promptLabel}>Template do Prompt</Text>
-        <TouchableOpacity onPress={() => setShowVariables(true)}>
-          <Text style={styles.variablesBtn}>📋 Variáveis</Text>
+        <Text style={styles.settingLabel}>Template do Prompt</Text>
+        <TouchableOpacity 
+          onPress={() => setShowVariables(true)}
+          style={styles.variablesBtn}
+        >
+          <Text style={styles.variablesBtnText}>📋 Variáveis</Text>
         </TouchableOpacity>
       </View>
 
-      <TextInput
-        style={styles.promptInput}
-        value={promptTemplate}
-        onChangeText={setPromptTemplate}
-        placeholder="Digite o template do prompt..."
-        placeholderTextColor="#999"
-        multiline
-        textAlignVertical="top"
-      />
+      <View style={styles.promptCard}>
+        <TextInput
+          style={styles.promptInput}
+          value={promptTemplate}
+          onChangeText={setPromptTemplate}
+          placeholder="Digite o template do prompt..."
+          placeholderTextColor={colors.textTertiary}
+          multiline
+          textAlignVertical="top"
+        />
+      </View>
 
       <TouchableOpacity
         style={[styles.saveBtn, isSavingPrompt && styles.saveBtnDisabled]}
         onPress={savePromptTemplate}
         disabled={isSavingPrompt}
+        activeOpacity={0.8}
       >
         {isSavingPrompt ? (
-          <ActivityIndicator size="small" color="#fff" />
+          <ActivityIndicator size="small" color={colors.textInverse} />
         ) : (
           <Text style={styles.saveBtnText}>Salvar Template</Text>
         )}
@@ -376,7 +410,7 @@ export function DevToolsScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Variáveis Disponíveis</Text>
-            <ScrollView style={styles.variablesList}>
+            <ScrollView style={styles.variablesList} showsVerticalScrollIndicator={false}>
               {PROMPT_VARIABLES.map(v => (
                 <TouchableOpacity
                   key={v.var}
@@ -385,14 +419,19 @@ export function DevToolsScreen() {
                     setPromptTemplate(prev => prev + ' ' + v.var);
                     setShowVariables(false);
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.variableCode}>{v.var}</Text>
                   <Text style={styles.variableDesc}>{v.desc}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            <TouchableOpacity style={styles.modalClose} onPress={() => setShowVariables(false)}>
-              <Text style={styles.modalCloseText}>Fechar</Text>
+            <TouchableOpacity 
+              style={styles.modalCloseBtn} 
+              onPress={() => setShowVariables(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modalCloseBtnText}>Fechar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -403,36 +442,26 @@ export function DevToolsScreen() {
   return (
     <View style={styles.container}>
       {/* Tabs */}
-      <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'memory' && styles.tabActive]}
-          onPress={() => setActiveTab('memory')}
-        >
-          <Text style={[styles.tabText, activeTab === 'memory' && styles.tabTextActive]}>
-            🧠 Memória
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'audio' && styles.tabActive]}
-          onPress={() => setActiveTab('audio')}
-        >
-          <Text style={[styles.tabText, activeTab === 'audio' && styles.tabTextActive]}>
-            🔊 Áudio
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'prompt' && styles.tabActive]}
-          onPress={() => setActiveTab('prompt')}
-        >
-          <Text style={[styles.tabText, activeTab === 'prompt' && styles.tabTextActive]}>
-            📝 Prompt
-          </Text>
-        </TouchableOpacity>
+      <View style={styles.tabsContainer}>
+        {tabs.map((tab) => (
+          <TouchableOpacity
+            key={tab.key}
+            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+            onPress={() => setActiveTab(tab.key as any)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.tabIcon}>{tab.icon}</Text>
+            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#25D366" />
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Carregando...</Text>
         </View>
       ) : (
         <>
@@ -446,157 +475,334 @@ export function DevToolsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
   
   // Tabs
-  tabs: {
+  tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.sm,
   },
   tab: {
     flex: 1,
-    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    gap: spacing.xs,
   },
   tabActive: {
     borderBottomWidth: 2,
-    borderBottomColor: '#25D366',
+    borderBottomColor: colors.primary,
   },
-  tabText: { fontSize: 14, color: '#666' },
-  tabTextActive: { color: '#25D366', fontWeight: '600' },
+  tabIcon: {
+    fontSize: 16,
+  },
+  tabText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  tabTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
   
   // Tab content
-  tabContent: { flex: 1, padding: 16 },
+  tabContent: {
+    flex: 1,
+    padding: spacing.md,
+  },
   
-  // Memory Explorer
-  searchRow: { flexDirection: 'row', marginBottom: 16 },
+  // Search
+  searchContainer: {
+    marginBottom: spacing.md,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    ...shadows.xs,
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: spacing.sm,
+  },
   searchInput: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     fontSize: 15,
-    marginRight: 8,
+    color: colors.textPrimary,
   },
-  searchBtn: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#25D366',
-    borderRadius: 12,
-    justifyContent: 'center',
+  clearIcon: {
+    fontSize: 16,
+    color: colors.textTertiary,
+    padding: spacing.xs,
+  },
+  
+  // Memory
+  memoryList: {
+    flex: 1,
+  },
+  memoryCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    ...shadows.sm,
+  },
+  memoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.sm,
   },
-  searchBtnText: { fontSize: 20 },
-  memoryList: { flex: 1 },
-  memoryItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+  memoryTypeBadge: {
+    backgroundColor: colors.agentBg,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.xs,
   },
-  memoryHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  memoryType: {
-    fontSize: 11,
-    color: '#fff',
-    backgroundColor: '#8b5cf6',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    overflow: 'hidden',
+  memoryTypeText: {
+    ...typography.labelSmall,
+    color: colors.agentText,
     textTransform: 'uppercase',
     fontWeight: '600',
   },
-  memoryContact: { fontSize: 12, color: '#666' },
-  memoryContent: { fontSize: 14, color: '#333', lineHeight: 20 },
-  memoryDate: { fontSize: 11, color: '#999', marginTop: 8 },
-  
-  // Settings section
-  settingSection: { marginBottom: 24 },
-  sectionTitle: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 12 },
-  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  optionBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+  memoryContact: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
-  optionBtnActive: { backgroundColor: '#25D366', borderColor: '#25D366' },
-  optionBtnText: { fontSize: 14, color: '#666' },
-  optionBtnTextActive: { color: '#fff', fontWeight: '600' },
+  memoryContent: {
+    ...typography.body,
+    color: colors.textPrimary,
+    lineHeight: 22,
+  },
+  memoryDate: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: spacing.sm,
+  },
+  
+  // Settings Card
+  settingsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    ...shadows.sm,
+  },
+  settingLabel: {
+    ...typography.label,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.md,
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  optionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceHover,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    gap: spacing.xs,
+  },
+  optionBtnActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  optionIcon: {
+    fontSize: 18,
+  },
+  optionBtnText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  optionBtnTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  voicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  voiceBtn: {
+    width: '30%',
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceHover,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  voiceBtnActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  voiceBtnText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  voiceBtnTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
   textInput: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: colors.surfaceHover,
+    borderRadius: radius.md,
+    padding: spacing.lg,
     fontSize: 15,
+    color: colors.textPrimary,
   },
   
   // Prompt
-  promptHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  promptLabel: { fontSize: 14, fontWeight: '600', color: '#333' },
-  variablesBtn: { fontSize: 13, color: '#25D366', fontWeight: '500' },
+  promptHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  variablesBtn: {
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  variablesBtnText: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  promptCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    ...shadows.sm,
+    marginBottom: spacing.md,
+  },
   promptInput: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    padding: spacing.lg,
     fontSize: 14,
     lineHeight: 22,
-    marginBottom: 16,
-    textAlignVertical: 'top',
+    color: colors.textPrimary,
   },
   
   // Save button
   saveBtn: {
-    backgroundColor: '#25D366',
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.lg,
+    borderRadius: radius.md,
     alignItems: 'center',
-    marginTop: 8,
+    ...shadows.sm,
   },
-  saveBtnDisabled: { backgroundColor: '#ccc' },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  saveBtnDisabled: {
+    backgroundColor: colors.border,
+  },
+  saveBtnText: {
+    ...typography.button,
+    color: colors.textInverse,
+  },
   
   // Empty
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, color: '#666' },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: spacing.xxxl,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  emptySubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  hint: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    padding: spacing.lg,
+  },
   
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xl,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xxxl + 8 : spacing.xl,
     maxHeight: '60%',
   },
-  modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 16, textAlign: 'center' },
-  variablesList: { maxHeight: 300 },
+  modalTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  variablesList: {
+    maxHeight: 300,
+  },
   variableItem: {
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.borderLight,
   },
-  variableCode: { fontSize: 14, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: '#8b5cf6', fontWeight: '600' },
-  variableDesc: { fontSize: 13, color: '#666', marginTop: 4 },
-  modalClose: {
-    marginTop: 16,
-    paddingVertical: 14,
+  variableCode: {
+    ...typography.body,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    color: colors.agentText,
+    fontWeight: '600',
+  },
+  variableDesc: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  modalCloseBtn: {
+    marginTop: spacing.lg,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceHover,
+    borderRadius: radius.md,
   },
-  modalCloseText: { fontSize: 16, color: '#666', fontWeight: '600' },
+  modalCloseBtnText: {
+    ...typography.button,
+    color: colors.textSecondary,
+  },
 });

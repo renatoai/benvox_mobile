@@ -99,7 +99,7 @@ export function ConversationsScreen() {
       setSections(initialSections);
       
       for (const channel of channelsData) {
-        loadChannelPage(channel.id_channel, 1, false);
+        loadChannelPage(channel.id_channel, 1, false, filter);
       }
       
       if (channelsData.length > 0) {
@@ -113,16 +113,22 @@ export function ConversationsScreen() {
     }
   }, []);
 
-  const loadChannelPage = async (channelId: string, page: number, loadMore: boolean) => {
+  const loadChannelPage = async (channelId: string, page: number, loadMore: boolean, currentFilter: string) => {
     setSections(prev => prev.map(s => 
       s.channel.id_channel === channelId ? { ...s, isLoading: true } : s
     ));
 
     try {
+      // Map filter to API param
+      const assignmentParam = currentFilter === 'minhas' ? 'minhas' 
+        : currentFilter === 'fila' ? 'outras'  // fila = não atribuídas
+        : undefined; // todas = sem filtro
+      
       const response = await conversationsService.getAll({ 
         limit: ITEMS_PER_PAGE, 
         page: page,
         id_channel: channelId,
+        assignment: assignmentParam as any,
       });
       
       setSections(prev => prev.map(s => {
@@ -147,7 +153,7 @@ export function ConversationsScreen() {
   const loadMoreConversations = (channelId: string) => {
     const section = sections.find(s => s.channel.id_channel === channelId);
     if (section && section.hasMore && !section.isLoading) {
-      loadChannelPage(channelId, section.page, true);
+      loadChannelPage(channelId, section.page, true, filter);
     }
   };
 
@@ -155,9 +161,25 @@ export function ConversationsScreen() {
     if (loadMore) {
       loadMoreConversations(channelId);
     } else {
-      loadChannelPage(channelId, 1, false);
+      loadChannelPage(channelId, 1, false, filter);
     }
   };
+
+  // Reload when filter changes
+  useEffect(() => {
+    if (channels.length > 0) {
+      // Reset sections and reload
+      setSections(prev => prev.map(s => ({
+        ...s,
+        data: [],
+        page: 1,
+        hasMore: true,
+      })));
+      for (const channel of channels) {
+        loadChannelPage(channel.id_channel, 1, false, filter);
+      }
+    }
+  }, [filter]);
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
 

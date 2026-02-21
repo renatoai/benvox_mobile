@@ -29,21 +29,49 @@ export function FunnelDetailScreen() {
 
   const loadStages = useCallback(async () => {
     try {
-      const [stagesData, statsData] = await Promise.all([
-        funnelsService.getStages(funnelId),
+      // Use /pipelines/:id/contacts which returns stages WITH contacts already loaded
+      const [contactsData, statsData] = await Promise.all([
+        funnelsService.getContacts(funnelId),
         funnelsService.getStats(funnelId).catch(() => null),
       ]);
       
-      const sorted = stagesData.sort((a: FunnelStage, b: FunnelStage) => a.position - b.position);
-      setStages(sorted);
+      // Extract stages with contacts from the response
+      const stagesWithContacts = (contactsData as any)?.stages || contactsData || [];
+      const sorted = stagesWithContacts.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0));
+      
+      // Map to expected format with contacts_count
+      const mappedStages = sorted.map((s: any) => ({
+        ...s,
+        id_stage: s.id_stage,
+        contacts_count: s.count || s.contacts?.length || 0,
+        position: s.order_index || 0,
+      }));
+      
+      setStages(mappedStages);
       setStats(statsData);
       
+      // Pre-populate stageConversations from the loaded data
+      const convsByStage: Record<string, Conversation[]> = {};
+      for (const stage of sorted) {
+        if (stage.contacts && stage.contacts.length > 0) {
+          convsByStage[stage.id_stage] = stage.contacts.map((c: any) => ({
+            id_conversation: c.id_conversation,
+            contact_name: c.contact_name,
+            contact_phone: c.contact_phone,
+            contact_avatar_url: c.contact_avatar_url,
+            last_message_at: c.last_message_at,
+            status: c.status,
+            priority: c.priority,
+          }));
+        }
+      }
+      setStageConversations(convsByStage);
+      
       // Auto-expand first stage with contacts
-      const firstWithContacts = sorted.find((s: FunnelStage) => (s.contacts_count || 0) > 0);
+      const firstWithContacts = mappedStages.find((s: FunnelStage) => (s.contacts_count || 0) > 0);
       if (firstWithContacts) {
         const stageId = firstWithContacts.id_stage || firstWithContacts.id_funnel_stage || '';
         setExpandedStages(new Set([stageId]));
-        loadStageConversations(stageId);
       }
     } catch (error) {
       console.error('Error loading stages:', error);
@@ -54,21 +82,9 @@ export function FunnelDetailScreen() {
   }, [funnelId]);
 
   const loadStageConversations = async (stageId: string) => {
-    if (loadingStages.has(stageId) || stageConversations[stageId]) return;
-    
-    setLoadingStages(prev => new Set(prev).add(stageId));
-    try {
-      const data = await funnelsService.getStageConversations(stageId);
-      setStageConversations(prev => ({ ...prev, [stageId]: data }));
-    } catch (error) {
-      console.error('Error loading stage conversations:', error);
-    } finally {
-      setLoadingStages(prev => {
-        const next = new Set(prev);
-        next.delete(stageId);
-        return next;
-      });
-    }
+    // Conversations are already loaded from getContacts, no need for separate call
+    // This is kept for potential manual refresh scenarios
+    if (stageConversations[stageId]) return;
   };
 
   useEffect(() => {

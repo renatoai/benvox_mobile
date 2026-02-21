@@ -94,9 +94,14 @@ export function AgentDetailScreen() {
     try {
       const tools = await agentsService.getAllTools();
       if (tools && tools.length > 0) {
-        // Tools may come as objects with name property or as strings
-        const toolNames = tools.map((t: any) => typeof t === 'string' ? t : t.name || t.tool_name);
-        setAvailableTools(toolNames);
+        // Tools come from registry with code_ref or name
+        const toolNames = tools.map((t: any) => {
+          if (typeof t === 'string') return t;
+          return t.code_ref || t.codeRef || t.name || t.tool_name;
+        }).filter(Boolean);
+        if (toolNames.length > 0) {
+          setAvailableTools(toolNames);
+        }
       }
     } catch (error) {
       console.error('Error loading tools:', error);

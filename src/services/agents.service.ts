@@ -42,7 +42,8 @@ export const agentsService = {
   },
 
   async getAllTools(): Promise<any[]> {
-    const response = await api.get('/ai-agents/tools/available');
+    // Get tools from ToolRegistry endpoint
+    const response = await api.get('/ai-tools/registry');
     return Array.isArray(response.data) ? response.data : response.data.data || [];
   },
 

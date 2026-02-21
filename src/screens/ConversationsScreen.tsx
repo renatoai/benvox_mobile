@@ -33,7 +33,7 @@ interface Channel {
 interface ChannelSection {
   channel: Channel;
   data: Conversation[];
-  offset: number;
+  page: number;
   hasMore: boolean;
   isLoading: boolean;
 }
@@ -103,7 +103,7 @@ export function ConversationsScreen() {
       const initialSections: ChannelSection[] = channelsData.map((ch: Channel) => ({
         channel: ch,
         data: [],
-        offset: 0,
+        page: 1,
         hasMore: true,
         isLoading: false,
       }));
@@ -111,7 +111,7 @@ export function ConversationsScreen() {
       
       // Load first page for each channel
       for (const channel of channelsData) {
-        loadChannelConversationsWithOffset(channel.id_channel, 0, false);
+        loadChannelPage(channel.id_channel, 1, false);
       }
       
       // Expand first channel by default
@@ -126,7 +126,7 @@ export function ConversationsScreen() {
     }
   }, []);
 
-  const loadChannelConversationsWithOffset = async (channelId: string, offset: number, loadMore: boolean) => {
+  const loadChannelPage = async (channelId: string, page: number, loadMore: boolean) => {
     setSections(prev => prev.map(s => 
       s.channel.id_channel === channelId 
         ? { ...s, isLoading: true }
@@ -134,12 +134,14 @@ export function ConversationsScreen() {
     ));
 
     try {
+      console.log(`[Inbox] Loading channel ${channelId}, page ${page}`);
       const response = await conversationsService.getAll({ 
         limit: ITEMS_PER_PAGE, 
-        // @ts-ignore - backend supports these params
-        offset: offset,
+        page: page,
         id_channel: channelId,
       });
+      
+      console.log(`[Inbox] Got ${response.length} conversations for page ${page}`);
       
       setSections(prev => prev.map(s => {
         if (s.channel.id_channel !== channelId) return s;
@@ -151,7 +153,7 @@ export function ConversationsScreen() {
         return {
           ...s,
           data: newData,
-          offset: offset + response.length,
+          page: page + 1,
           hasMore: response.length === ITEMS_PER_PAGE,
           isLoading: false,
         };
@@ -169,7 +171,8 @@ export function ConversationsScreen() {
   const loadMoreConversations = (channelId: string) => {
     const section = sections.find(s => s.channel.id_channel === channelId);
     if (section && section.hasMore && !section.isLoading) {
-      loadChannelConversationsWithOffset(channelId, section.offset, true);
+      console.log(`[Inbox] Load more for ${channelId}, current page: ${section.page}`);
+      loadChannelPage(channelId, section.page, true);
     }
   };
 
@@ -177,7 +180,7 @@ export function ConversationsScreen() {
     if (loadMore) {
       loadMoreConversations(channelId);
     } else {
-      loadChannelConversationsWithOffset(channelId, 0, false);
+      loadChannelPage(channelId, 1, false);
     }
   };
 
@@ -387,7 +390,7 @@ export function ConversationsScreen() {
                 {section.isLoading ? (
                   <ActivityIndicator size="small" color="#25D366" />
                 ) : (
-                  <Text style={styles.loadMoreText}>Carregar mais... ({section.data.length})</Text>
+                  <Text style={styles.loadMoreText}>Carregar página {section.page}... ({section.data.length} carregados)</Text>
                 )}
               </TouchableOpacity>
             )}

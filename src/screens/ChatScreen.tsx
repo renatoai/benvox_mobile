@@ -27,6 +27,7 @@ import * as FileSystem from 'expo-file-system';
 import { conversationsService, contactsService, funnelsService, agentsService, tagsService, messagesService } from '../services';
 import type { Message, Conversation, AiAgent, Tag, FunnelStage } from '../types';
 import { useMessageSSE } from '../hooks/useMessageSSE';
+import { colors, spacing, radius, typography, shadows } from '../theme';
 
 type RootStackParamList = {
   Chat: { conversationId: string; contactName: string };
@@ -1857,24 +1858,25 @@ const styles = StyleSheet.create({
   },
   
   // Chat
-  chatBackground: { flex: 1 },
-  messagesList: { padding: 8, paddingBottom: 16 },
+  chatBackground: { flex: 1, backgroundColor: colors.background },
+  messagesList: { padding: spacing.md, paddingBottom: spacing.lg },
   messageContainer: {
     maxWidth: '80%',
-    marginVertical: 2,
-    padding: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    marginVertical: spacing.xs,
+    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    ...shadows.xs,
   },
   myMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#DCF8C6',
-    borderTopRightRadius: 0,
+    backgroundColor: colors.primaryLight,
+    borderBottomRightRadius: radius.xs,
   },
   theirMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 0,
+    backgroundColor: colors.surface,
+    borderBottomLeftRadius: radius.xs,
   },
   failedMessage: {
     backgroundColor: '#fee2e2',
@@ -2067,36 +2069,39 @@ const styles = StyleSheet.create({
   // Input
   inputContainer: {
     flexDirection: 'row',
-    padding: 8,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-    backgroundColor: '#f5f5f5',
+    padding: spacing.sm,
+    paddingBottom: Platform.OS === 'ios' ? 28 : spacing.sm,
+    backgroundColor: colors.surface,
     alignItems: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  attachButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  attachIcon: { fontSize: 22 },
-  emojiButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  attachButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center', borderRadius: radius.full },
+  attachIcon: { fontSize: 22, color: colors.textSecondary },
+  emojiButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   emojiIcon: { fontSize: 22 },
   input: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    backgroundColor: colors.surfaceHover,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     maxHeight: 100,
     fontSize: 16,
+    color: colors.textPrimary,
   },
   sendButton: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: '#ccc',
+    borderRadius: radius.full,
+    backgroundColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
-  sendButtonActive: { backgroundColor: '#25D366' },
-  sendButtonText: { color: '#fff', fontSize: 20 },
-  micIcon: { fontSize: 22 },
+  sendButtonActive: { backgroundColor: colors.primary },
+  sendButtonText: { color: colors.textInverse, fontSize: 20 },
+  micIcon: { fontSize: 22, color: colors.textSecondary },
   
   // Emoji picker
   emojiPickerContainer: {
@@ -2112,38 +2117,38 @@ const styles = StyleSheet.create({
   // Modals
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   actionsSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 40,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xl,
+    paddingBottom: spacing.xxxl + 8,
   },
-  sheetTitle: { fontSize: 18, fontWeight: '600', marginBottom: 16, textAlign: 'center' },
+  sheetTitle: { ...typography.h3, marginBottom: spacing.lg, textAlign: 'center', color: colors.textPrimary },
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.borderLight,
   },
   dangerItem: { borderBottomWidth: 0 },
-  dangerText: { color: '#ef4444' },
-  assistantItem: { backgroundColor: '#faf5ff' },
-  assistantText: { color: '#8b5cf6', fontWeight: '600' },
-  actionIcon: { fontSize: 20, marginRight: 12, width: 30 },
-  actionText: { fontSize: 16, color: '#333' },
+  dangerText: { color: colors.error },
+  assistantItem: { backgroundColor: colors.agentBg, borderRadius: radius.md, marginBottom: spacing.sm },
+  assistantText: { color: colors.agentText, fontWeight: '600' },
+  actionIcon: { fontSize: 20, marginRight: spacing.md, width: 30, color: colors.textSecondary },
+  actionText: { ...typography.body, color: colors.textPrimary },
   cancelButton: {
-    marginTop: 16,
-    paddingVertical: 14,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceHover,
+    borderRadius: radius.md,
   },
-  cancelText: { fontSize: 16, color: '#666', fontWeight: '600' },
+  cancelText: { ...typography.button, color: colors.textSecondary },
   
   // Attachments
   attachmentSheet: {

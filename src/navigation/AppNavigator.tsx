@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { ActivityIndicator } from 'react-native';
+import { colors, spacing, radius, typography, shadows } from '../theme';
 import {
   LoginScreen,
   ConversationsScreen,
@@ -48,9 +49,18 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator();
 
 const screenOptions = {
-  headerStyle: { backgroundColor: '#075E54' },
-  headerTintColor: '#fff',
-  headerTitleStyle: { fontWeight: '600' as const },
+  headerStyle: { 
+    backgroundColor: colors.surface,
+    elevation: 0,
+    shadowOpacity: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerTintColor: colors.textPrimary,
+  headerTitleStyle: { 
+    fontWeight: '600' as const,
+    fontSize: 17,
+  },
 };
 
 function CustomDrawerContent(props: any) {
@@ -89,9 +99,11 @@ function DrawerNavigator() {
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         ...screenOptions,
-        drawerActiveTintColor: '#25D366',
-        drawerInactiveTintColor: '#666',
-        drawerLabelStyle: { marginLeft: -16, fontSize: 15 },
+        drawerActiveTintColor: colors.primary,
+        drawerInactiveTintColor: colors.textSecondary,
+        drawerLabelStyle: { marginLeft: -12, fontSize: 15, fontWeight: '500' },
+        drawerItemStyle: { borderRadius: radius.md, marginHorizontal: spacing.sm },
+        drawerActiveBackgroundColor: colors.primarySoft,
       }}
     >
       <Drawer.Screen
@@ -282,60 +294,63 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#075E54',
+    backgroundColor: colors.primary,
   },
   drawerContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   drawerScrollContent: {
     paddingTop: 0,
   },
   drawerHeader: {
-    backgroundColor: '#075E54',
-    padding: 20,
-    paddingTop: 50,
+    backgroundColor: colors.primaryDark,
+    padding: spacing.xl,
+    paddingTop: 60,
+    paddingBottom: spacing.xxl,
   },
   userAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#25D366',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   userAvatarText: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '600',
+    color: colors.textInverse,
+    fontSize: 26,
+    fontWeight: '700',
   },
   userName: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    color: colors.textInverse,
+    ...typography.h3,
   },
   userEmail: {
-    color: '#DCF8C6',
-    fontSize: 14,
-    marginTop: 4,
+    color: colors.primaryLight,
+    ...typography.bodySmall,
+    marginTop: spacing.xs,
+    opacity: 0.9,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    paddingBottom: 32,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
   logoutIcon: {
     fontSize: 20,
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   logoutText: {
-    fontSize: 15,
-    color: '#e74c3c',
-    fontWeight: '500',
+    ...typography.body,
+    color: colors.error,
+    fontWeight: '600',
   },
 });

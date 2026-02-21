@@ -448,7 +448,7 @@ export function ConversationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb', // neutral-50
+    backgroundColor: '#ffffff',
   },
   
   // Loading
@@ -456,147 +456,141 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    gap: spacing.md,
+    backgroundColor: '#ffffff',
   },
   loadingText: {
-    fontSize: 15,
-    color: '#6b7280',
+    fontSize: 13,
+    color: '#9ca3af',
+    marginTop: 12,
   },
   loadingContainer: {
-    padding: spacing.xl,
+    padding: 20,
     alignItems: 'center',
   },
   
-  // Header & Filters
+  // Header & Filters - Minimal
   header: {
     backgroundColor: '#ffffff',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
     borderBottomColor: '#e5e7eb',
   },
   filterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: radius.lg,
-    padding: 4,
   },
   sseIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 8,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 12,
   },
-  sseOn: { backgroundColor: '#25d366' },
+  sseOn: { backgroundColor: '#22c55e' },
   sseOff: { backgroundColor: '#f59e0b' },
   filterPill: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    marginRight: 8,
   },
   filterPillActive: {
-    backgroundColor: '#ffffff',
-    ...shadows.xs,
+    backgroundColor: '#f3f4f6',
   },
   filterText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#6b7280',
+    fontWeight: '500',
+    color: '#9ca3af',
   },
   filterTextActive: {
-    color: '#36abd5', // primary
+    color: '#111827',
   },
   
-  // Channel Section
+  // Channel Section - Minimal
   channelSection: {
     marginTop: 0,
   },
   channelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#f9fafb',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#fafafa',
   },
   channelIconWrapper: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   channelIconActive: {
-    backgroundColor: '#25d366',
+    backgroundColor: 'transparent',
   },
   channelIconText: {
-    fontSize: 14,
+    fontSize: 12,
   },
   channelInfo: {
     flex: 1,
     marginLeft: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
   },
   channelName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   channelCount: {
     fontSize: 11,
     color: '#9ca3af',
+    marginLeft: 6,
   },
   channelUnreadBadge: {
-    backgroundColor: '#fed7aa', // orange-100
-    borderRadius: radius.full,
-    paddingHorizontal: 8,
+    backgroundColor: '#fef3c7',
+    borderRadius: 10,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     marginRight: 8,
   },
   channelUnreadText: {
     fontSize: 10,
-    color: '#c2410c', // orange-700
-    fontWeight: '500',
+    color: '#d97706',
+    fontWeight: '600',
   },
   chevron: {
-    fontSize: 14,
-    color: '#9ca3af',
+    fontSize: 12,
+    color: '#d1d5db',
   },
   
-  // Conversations List
+  // Conversations List - Clean
   conversationsList: {
     backgroundColor: '#ffffff',
   },
   conversationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 8,
-    marginVertical: 2,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#f3f4f6',
   },
   conversationCardSelected: {
-    backgroundColor: 'rgba(229, 231, 235, 0.5)',
+    backgroundColor: '#f9fafb',
   },
   
-  // Avatar - matching desktop (50x50)
+  // Avatar - Smaller, cleaner
   avatarWrapper: {
     position: 'relative',
-    width: 50,
-    height: 50,
+    width: 44,
+    height: 44,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   avatarPlaceholder: {
     backgroundColor: '#3b82f6',
@@ -604,25 +598,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
   },
   onlineIndicator: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#25d366', // WhatsApp green when has unread
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#22c55e',
     borderWidth: 2,
     borderColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   
-  // Conversation Content
+  // Conversation Content - Minimal
   conversationContent: {
     flex: 1,
     marginLeft: 12,
@@ -634,23 +626,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   contactName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '400',
-    color: '#1f2937', // neutral-800
+    color: '#374151',
     flex: 1,
     marginRight: 8,
   },
   contactNameUnread: {
     fontWeight: '600',
-    color: '#111827', // neutral-900
+    color: '#111827',
   },
   timeText: {
-    fontSize: 12,
-    color: '#6b7280', // neutral-500
+    fontSize: 11,
+    color: '#9ca3af',
   },
   timeTextUnread: {
-    color: '#25d366', // WhatsApp green
-    fontWeight: '600',
+    color: '#22c55e',
+    fontWeight: '500',
   },
   middleRow: {
     marginTop: 2,
@@ -660,24 +652,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusIcon: {
-    fontSize: 13,
-    marginRight: 4,
-    fontWeight: '600',
+    fontSize: 12,
+    marginRight: 3,
   },
   messageText: {
     fontSize: 13,
-    color: '#6b7280', // neutral-500
+    color: '#9ca3af',
     flex: 1,
   },
   messageTextUnread: {
-    color: '#374151', // neutral-700
-    fontWeight: '500',
+    color: '#6b7280',
   },
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 4,
   },
   badgesLeft: {
     flexDirection: 'row',
@@ -686,72 +676,70 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
-  // Badges
+  // Badges - Minimal
   badge: {
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 1,
     borderRadius: 4,
     flexDirection: 'row',
     alignItems: 'center',
   },
   badgeAgent: {
-    backgroundColor: '#ede9fe', // violet-100
+    backgroundColor: '#f3e8ff',
   },
   badgeHuman: {
-    backgroundColor: '#e0f2fe', // sky-100
+    backgroundColor: '#e0f2fe',
   },
   badgeText: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 10,
   },
   badgeTextAgent: {
-    color: '#7c3aed', // violet-600
+    color: '#9333ea',
   },
   badgeTextHuman: {
-    color: '#0284c7', // sky-600
+    color: '#0284c7',
   },
   tagBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
   },
   tagDot: {
-    width: 6,
-    height: 6,
+    width: 5,
+    height: 5,
     borderRadius: 3,
-    marginRight: 4,
+    marginRight: 3,
   },
   tagText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
   },
   unreadBadge: {
-    backgroundColor: '#25d366', // WhatsApp green
-    borderRadius: 12,
-    minWidth: 20,
-    height: 20,
+    backgroundColor: '#22c55e',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
   },
   unreadText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#ffffff',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   
   // Load More
   loadMoreButton: {
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
   },
   loadMoreText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#36abd5',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6b7280',
   },
   
   // Empty States
@@ -759,29 +747,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 40,
   },
   emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+    fontSize: 48,
+    marginBottom: 12,
+    opacity: 0.5,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6b7280',
+    marginBottom: 4,
   },
   emptySubtitle: {
-    fontSize: 15,
-    color: '#6b7280',
+    fontSize: 13,
+    color: '#9ca3af',
     textAlign: 'center',
   },
   emptyChannel: {
-    padding: 24,
+    padding: 20,
     alignItems: 'center',
   },
   emptyChannelText: {
-    fontSize: 14,
-    color: '#9ca3af',
+    fontSize: 12,
+    color: '#d1d5db',
   },
 });

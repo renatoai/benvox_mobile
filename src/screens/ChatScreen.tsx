@@ -55,6 +55,7 @@ export function ChatScreen() {
   // Pagination for infinite scroll
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const messagesOffsetRef = useRef(0);
   const MESSAGES_PER_PAGE = 30;
   
   // Modals
@@ -122,9 +123,14 @@ export function ChatScreen() {
       if (loadMore) {
         if (!hasMoreMessages || isLoadingMore) return;
         setIsLoadingMore(true);
+      } else {
+        // Reset offset when loading fresh
+        messagesOffsetRef.current = 0;
       }
       
-      const offset = loadMore ? messages.length : 0;
+      const offset = messagesOffsetRef.current;
+      console.log(`[Chat] Loading messages, offset: ${offset}, loadMore: ${loadMore}`);
+      
       const data = await conversationsService.getMessages(conversationId, MESSAGES_PER_PAGE, offset);
       
       // Sort newest first for display (inverted list shows newest at bottom)
@@ -133,21 +139,25 @@ export function ChatScreen() {
       );
       
       if (loadMore) {
-        // Prepend older messages (they have earlier dates)
+        // Append older messages
         setMessages(prev => [...prev, ...sorted]);
       } else {
         setMessages(sorted);
       }
       
+      // Update offset for next load
+      messagesOffsetRef.current += data.length;
+      
       // Check if there are more messages
       setHasMoreMessages(data.length === MESSAGES_PER_PAGE);
+      console.log(`[Chat] Loaded ${data.length} messages, new offset: ${messagesOffsetRef.current}`);
     } catch (error) {
       console.error('Error loading messages:', error);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [conversationId, messages.length, hasMoreMessages, isLoadingMore]);
+  }, [conversationId, hasMoreMessages, isLoadingMore]);
 
   const loadTags = useCallback(async () => {
     try {

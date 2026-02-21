@@ -74,6 +74,12 @@ export const funnelsService = {
     await api.post(`/pipelines/conversations/${conversationId}/move-stage`, { stageId });
   },
 
+  async getStageConversations(stageId: string): Promise<any[]> {
+    const response = await api.get(`/pipelines/stages/${stageId}/conversations`);
+    if (Array.isArray(response.data)) return response.data;
+    return response.data.data || response.data.conversations || [];
+  },
+
   // Stats
   async getStats(pipelineId: string): Promise<any> {
     const response = await api.get(`/pipelines/${pipelineId}/stats`);

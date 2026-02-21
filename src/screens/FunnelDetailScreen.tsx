@@ -25,12 +25,18 @@ export function FunnelDetailScreen() {
   const [loadingStages, setLoadingStages] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [stats, setStats] = useState<any>(null);
 
   const loadStages = useCallback(async () => {
     try {
-      const data = await funnelsService.getStages(funnelId);
-      const sorted = data.sort((a: FunnelStage, b: FunnelStage) => a.position - b.position);
+      const [stagesData, statsData] = await Promise.all([
+        funnelsService.getStages(funnelId),
+        funnelsService.getStats(funnelId).catch(() => null),
+      ]);
+      
+      const sorted = stagesData.sort((a: FunnelStage, b: FunnelStage) => a.position - b.position);
       setStages(sorted);
+      setStats(statsData);
       
       // Auto-expand first stage with contacts
       const firstWithContacts = sorted.find((s: FunnelStage) => (s.contacts_count || 0) > 0);
@@ -155,6 +161,11 @@ export function FunnelDetailScreen() {
     );
   }
 
+  // Calculate totals from stages
+  const totalContacts = stages.reduce((sum, s) => sum + (s.contacts_count || 0), 0);
+  const openConversations = stats?.conversations_open || 0;
+  const closedConversations = stats?.conversations_closed || 0;
+
   return (
     <ScrollView 
       style={styles.container}
@@ -162,6 +173,30 @@ export function FunnelDetailScreen() {
         <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#25D366']} />
       }
     >
+      {/* Stats Header */}
+      <View style={styles.statsHeader}>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>👥</Text>
+          <Text style={styles.statValue}>{totalContacts}</Text>
+          <Text style={styles.statLabel}>Leads</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>💬</Text>
+          <Text style={styles.statValue}>{openConversations}</Text>
+          <Text style={styles.statLabel}>Abertas</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>✅</Text>
+          <Text style={styles.statValue}>{closedConversations}</Text>
+          <Text style={styles.statLabel}>Fechadas</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>📊</Text>
+          <Text style={styles.statValue}>{stages.length}</Text>
+          <Text style={styles.statLabel}>Etapas</Text>
+        </View>
+      </View>
+
       <View style={styles.pipeline}>
         {stages.map((stage, index) => {
           const stageId = stage.id_stage || stage.id_funnel_stage || '';
@@ -241,7 +276,27 @@ export function FunnelDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  pipeline: { padding: 16 },
+  statsHeader: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 8,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  statIcon: { fontSize: 20, marginBottom: 4 },
+  statValue: { fontSize: 20, fontWeight: '700', color: '#333' },
+  statLabel: { fontSize: 11, color: '#666', marginTop: 2 },
+  pipeline: { padding: 16, paddingTop: 0 },
   stageContainer: { alignItems: 'center' },
   stage: {
     backgroundColor: '#fff',

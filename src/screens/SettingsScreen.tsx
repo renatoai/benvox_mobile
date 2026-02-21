@@ -8,12 +8,14 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { settingsService } from '../services';
 import type { TenantSettings } from '../types';
 import { colors, spacing, radius, typography, shadows } from '../theme';
 
 export function SettingsScreen() {
+  const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const [settings, setSettings] = useState<TenantSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +58,7 @@ export function SettingsScreen() {
     {
       title: 'Chat',
       items: [
-        { icon: '💬', label: 'Exibição de Remetente', value: settings?.show_sender_name_attendant || 'name' },
+        { icon: '💬', label: 'Configurações do Chat', onPress: () => navigation.navigate('ChatSettings'), hasArrow: true },
         { icon: '🤖', label: 'Título do Agente', value: settings?.default_agent_title || 'Agente' },
         { icon: '👤', label: 'Título do Atendente', value: settings?.default_attendant_title || 'Atendente' },
       ],

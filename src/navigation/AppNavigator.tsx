@@ -10,6 +10,7 @@ import {
   ConversationsScreen,
   ChatScreen,
   SettingsScreen,
+  ChatSettingsScreen,
   ChannelsScreen,
   ContactsScreen,
   ContactDetailScreen,
@@ -48,6 +49,7 @@ export type RootStackParamList = {
   NewTask: undefined;
   NewTag: undefined;
   KnowledgeDetail: { baseId: string; name: string };
+  ChatSettings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -305,6 +307,11 @@ export function AppNavigator() {
             options={({ route }) => ({
               title: route.params?.name || 'Base de Conhecimento',
             })}
+          />
+          <Stack.Screen
+            name="ChatSettings"
+            component={ChatSettingsScreen}
+            options={{ title: 'Configurações do Chat' }}
           />
         </>
       )}

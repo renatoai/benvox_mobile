@@ -3,6 +3,7 @@ export { DashboardScreen } from './DashboardScreen';
 export { ConversationsScreen } from './ConversationsScreen';
 export { ChatScreen } from './ChatScreen';
 export { SettingsScreen } from './SettingsScreen';
+export { ChatSettingsScreen } from './ChatSettingsScreen';
 export { ChannelsScreen } from './ChannelsScreen';
 export { ContactsScreen } from './ContactsScreen';
 export { ContactDetailScreen } from './ContactDetailScreen';

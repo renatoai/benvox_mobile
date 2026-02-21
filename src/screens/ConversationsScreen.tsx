@@ -14,6 +14,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { conversationsService, tagsService, channelsService } from '../services';
 import type { Conversation, Tag } from '../types';
+import { useInboxSSE } from '../hooks/useInboxSSE';
 
 type RootStackParamList = {
   Conversations: undefined;
@@ -48,6 +49,44 @@ export function ConversationsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<'todas' | 'minhas' | 'fila'>('todas');
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set());
+  const [sseConnected, setSseConnected] = useState(false);
+
+  // SSE for real-time updates
+  const { isConnected } = useInboxSSE({
+    onNewMessage: (event) => {
+      console.log('[Inbox] New message event:', event.id_conversation);
+      // Update the conversation in the list
+      setSections(prev => prev.map(section => ({
+        ...section,
+        data: section.data.map(conv => {
+          if (conv.id_conversation === event.id_conversation) {
+            return {
+              ...conv,
+              last_message_text: event.last_message_text || conv.last_message_text,
+              last_message_at: event.last_message_at || conv.last_message_at,
+              unread_count: (conv.unread_count || 0) + 1,
+            } as Conversation;
+          }
+          return conv;
+        }),
+      })));
+    },
+    onConversationUpdated: (event) => {
+      console.log('[Inbox] Conversation updated:', event.id_conversation);
+      // Refresh the specific channel's conversations
+      if (event.id_channel) {
+        loadChannelConversations(event.id_channel, false);
+      }
+    },
+    onConnected: () => {
+      console.log('[Inbox] SSE connected');
+      setSseConnected(true);
+    },
+    onDisconnected: () => {
+      console.log('[Inbox] SSE disconnected');
+      setSseConnected(false);
+    },
+  });
 
   // Load channels and initial conversations
   const loadData = useCallback(async () => {
@@ -369,8 +408,9 @@ export function ConversationsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Filter tabs */}
+      {/* Filter tabs with SSE indicator */}
       <View style={styles.filterTabs}>
+        <View style={[styles.sseIndicator, sseConnected ? styles.sseConnected : styles.sseDisconnected]} />
         {(['todas', 'minhas', 'fila'] as const).map(tab => (
           <TouchableOpacity
             key={tab}
@@ -416,6 +456,7 @@ const styles = StyleSheet.create({
   // Filter tabs
   filterTabs: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#f5f5f5',
     margin: 12,
     marginBottom: 4,
@@ -438,6 +479,9 @@ const styles = StyleSheet.create({
   },
   filterTabText: { fontSize: 13, fontWeight: '500', color: '#666' },
   filterTabTextActive: { color: '#25D366', fontWeight: '600' },
+  sseIndicator: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+  sseConnected: { backgroundColor: '#25D366' },
+  sseDisconnected: { backgroundColor: '#f39c12' },
   
   // Channel header
   channelHeader: {

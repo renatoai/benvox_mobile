@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -247,6 +247,59 @@ export function ChatScreen() {
       }
     };
   }, [conversationId]);
+
+  // Custom header with contact photo
+  useLayoutEffect(() => {
+    const contactName = conversation?.contact?.name || route.params?.contactName || 'Chat';
+    const profilePicture = conversation?.contact?.profile_picture_url;
+    const initials = contactName.charAt(0).toUpperCase();
+    
+    navigation.setOptions({
+      headerTitle: () => (
+        <TouchableOpacity 
+          style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
+          onPress={() => setShowActions(true)}
+        >
+          {profilePicture ? (
+            <Image 
+              source={{ uri: profilePicture }} 
+              style={{ width: 36, height: 36, borderRadius: 18, marginRight: 10 }}
+            />
+          ) : (
+            <View style={{ 
+              width: 36, 
+              height: 36, 
+              borderRadius: 18, 
+              backgroundColor: '#25D366', 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              marginRight: 10,
+            }}>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{initials}</Text>
+            </View>
+          )}
+          <View>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#111b21' }} numberOfLines={1}>
+              {contactName}
+            </Text>
+            {conversation?.contact?.phone && (
+              <Text style={{ fontSize: 12, color: '#667781' }}>{conversation.contact.phone}</Text>
+            )}
+          </View>
+        </TouchableOpacity>
+      ),
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={{ padding: 8 }}>
+            <Text style={{ fontSize: 18 }}>🔍</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowActions(true)} style={{ padding: 8 }}>
+            <Text style={{ fontSize: 18 }}>⋮</Text>
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [conversation, navigation, route.params?.contactName, showSearch]);
 
   // Check for shortcut trigger
   useEffect(() => {
@@ -2446,59 +2499,66 @@ const styles = StyleSheet.create({
   recordingSend: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#25D366', justifyContent: 'center', alignItems: 'center' },
   recordingSendText: { fontSize: 18, color: '#fff' },
   
-  // Input - Compact
+  // Input - Compact WhatsApp style
   inputContainer: {
     flexDirection: 'row',
     paddingHorizontal: 6,
-    paddingVertical: 6,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 6,
+    paddingVertical: 5,
+    paddingBottom: Platform.OS === 'ios' ? 22 : 5,
     backgroundColor: '#f0f2f5',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 6,
   },
   inputWrapper: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     backgroundColor: '#ffffff',
-    borderRadius: 22,
-    paddingHorizontal: 4,
-    height: 44,
+    borderRadius: 21,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    minHeight: 42,
   },
   emojiButton: { 
-    width: 36, 
-    height: 44, 
+    width: 28, 
+    height: 28, 
     justifyContent: 'center', 
     alignItems: 'center',
+    marginRight: 2,
   },
-  emojiIcon: { fontSize: 22 },
+  emojiIcon: { fontSize: 22, lineHeight: 24 },
   input: {
     flex: 1,
     paddingHorizontal: 4,
     paddingVertical: 0,
+    paddingTop: Platform.OS === 'ios' ? 0 : 2,
     maxHeight: 100,
-    fontSize: 16,
+    minHeight: 28,
+    fontSize: 17,
+    lineHeight: 22,
     color: '#111b21',
     backgroundColor: 'transparent',
+    textAlignVertical: 'center',
   },
   attachButton: { 
-    width: 32, 
-    height: 44, 
+    width: 28, 
+    height: 28, 
     justifyContent: 'center', 
     alignItems: 'center',
   },
-  attachIcon: { fontSize: 20, color: '#54656f' },
+  attachIcon: { fontSize: 20, color: '#54656f', lineHeight: 22 },
   cameraButton: {
-    width: 32,
-    height: 44,
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 2,
   },
-  cameraIcon: { fontSize: 20, color: '#54656f' },
+  cameraIcon: { fontSize: 20, color: '#54656f', lineHeight: 22 },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#00a884',
     justifyContent: 'center',
     alignItems: 'center',

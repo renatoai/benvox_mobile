@@ -13,6 +13,7 @@ import {
   ScrollView,
   Switch,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { channelsService } from '../services';
 
 interface Channel {
@@ -32,6 +33,7 @@ interface Channel {
 }
 
 export function ChannelsScreen() {
+  const navigation = useNavigation<any>();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -265,6 +267,24 @@ export function ChannelsScreen() {
                     <Text style={styles.infoValueMono}>{selectedChannel.id_channel.slice(0, 8)}...</Text>
                   </View>
                 </View>
+
+                {/* Templates Button */}
+                {selectedChannel.type === 'whatsapp' && (
+                  <TouchableOpacity
+                    style={styles.templatesButton}
+                    onPress={() => {
+                      setEditModalVisible(false);
+                      navigation.navigate('ChannelTemplates', {
+                        channelId: selectedChannel.id_channel,
+                        channelName: selectedChannel.name,
+                      });
+                    }}
+                  >
+                    <Text style={styles.templatesIcon}>📝</Text>
+                    <Text style={styles.templatesText}>Ver Templates</Text>
+                    <Text style={styles.templatesChevron}>›</Text>
+                  </TouchableOpacity>
+                )}
               </>
             )}
           </ScrollView>
@@ -396,4 +416,19 @@ const styles = StyleSheet.create({
   statusBadge: { flexDirection: 'row', alignItems: 'center' },
   statusDotSmall: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
   statusBadgeText: { fontSize: 14, fontWeight: '500' },
+  
+  // Templates button
+  templatesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    marginTop: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  templatesIcon: { fontSize: 20, marginRight: 12 },
+  templatesText: { flex: 1, fontSize: 15, color: '#333', fontWeight: '500' },
+  templatesChevron: { fontSize: 20, color: '#999' },
 });

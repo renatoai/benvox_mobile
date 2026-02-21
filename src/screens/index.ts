@@ -5,6 +5,7 @@ export { ChatScreen } from './ChatScreen';
 export { SettingsScreen } from './SettingsScreen';
 export { ChatSettingsScreen } from './ChatSettingsScreen';
 export { ChannelsScreen } from './ChannelsScreen';
+export { ChannelTemplatesScreen } from './ChannelTemplatesScreen';
 export { ContactsScreen } from './ContactsScreen';
 export { ContactDetailScreen } from './ContactDetailScreen';
 export { NewContactScreen } from './NewContactScreen';

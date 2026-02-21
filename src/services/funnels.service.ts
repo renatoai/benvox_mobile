@@ -65,9 +65,10 @@ export const funnelsService = {
   },
 
   // Pipeline contacts
-  async getContacts(pipelineId: string): Promise<any[]> {
+  async getContacts(pipelineId: string): Promise<any> {
     const response = await api.get(`/pipelines/${pipelineId}/contacts`);
-    return Array.isArray(response.data) ? response.data : response.data.contacts || [];
+    // Returns { pipeline, stages: [...], total_contacts }
+    return response.data;
   },
 
   async moveConversationStage(conversationId: string, stageId: string): Promise<void> {
